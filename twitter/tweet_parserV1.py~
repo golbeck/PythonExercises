@@ -69,42 +69,33 @@ def fetchsamples(feed,max_id):
     parameters = []
     response = twitterreq(url, "GET", parameters)
     return json.load(response)
-
+    
 feed='from%3Acnbc'
 response=fetchsamples(feed,'')
 temp=response.keys()
 DF0=DataFrame(response[str(temp[1])])
 count=len(DF0.index)
-max_id=int(min(DF0.ix[:,'id']))-1
+max_id=DF0.ix[0,'id']
 
 
 while count <= 3200:
     if len(max_id)>0:
-        response=fetchsamples(feed,max_id)
+        response=fetchsamples(feed,str(max_id))
         temp=response.keys()
-        count0=len(response[str(temp[1])])
         DF1=DataFrame(response[str(temp[1])],index=range(count,count+count0))
+        count0=len(DF1.index)
         DF0=pd.concat([DF0,DF1])
         max_id=min(DF0.ix[:,'id'])-1
         count+=len(DF0.index)
 
-feed='from%3Acnbc'
-response=fetchsamples(feed,'')
+response=fetchsamples('@cnbc',str(max_id))
 temp=response.keys()
-DF0=DataFrame(response[str(temp[1])])
-count=len(DF0.index)
-max_id=int(min(DF0.ix[:,'id']))-1
-
-response=fetchsamples(feed,str(max_id))
-count0=len(response[str(temp[1])])
-print count0
 DF1=DataFrame(response[str(temp[1])],index=range(count,count+count0))
+count0=len(DF1.index)
 DF0=pd.concat([DF0,DF1])
-print DF0.index
-max_id=int(min(DF0.ix[:,'id']))-1
-print max_id
-count+=count0
-print count
+max_id=min(DF0.ix[:,'id'])-1
+count+=len(DF0.index)
+
 
 for i in range(0,len(response['statuses'])):
     #twitter screen name
