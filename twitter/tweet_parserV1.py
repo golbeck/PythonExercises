@@ -60,10 +60,15 @@ def twitterreq(url, method, parameters):
 def fetchsamples(feed,max_id):
     #to build a query, see:
     #https://dev.twitter.com/docs/using-search
-    url = "https://api.twitter.com/1.1/search/tweets.json?q="
+    # feed: string containing the term to be searched for (see above link)
+    # max_id: string with the ID of the most recent tweet to include in the results
+#    url = "https://api.twitter.com/1.1/search/tweets.json?q="
+    url="https://api.twitter.com/1.1/statuses/user_timeline.json?screen_name="
     url=url+feed
     #download the maximum number of tweets
-    url=url+'&count=100'
+    url=url+'&count=200'
+    url=url+'&exclude_replies=true'
+    url=url+'&include_rts=false'
     if len(max_id)>0:
         url=url+'&max_id='+max_id
     parameters = []
@@ -71,6 +76,7 @@ def fetchsamples(feed,max_id):
     return json.load(response)
 
 feed='from%3Acnbc'
+feed='cnn'
 response=fetchsamples(feed,'')
 temp=response.keys()
 DF0=DataFrame(response[str(temp[1])])
@@ -79,16 +85,34 @@ max_id=int(min(DF0.ix[:,'id']))-1
 
 
 while count <= 3200:
-    if len(max_id)>0:
-        response=fetchsamples(feed,max_id)
-        temp=response.keys()
+    if len(str(max_id))>0:
+        response=fetchsamples(feed,str(max_id))
         count0=len(response[str(temp[1])])
+        print count0
         DF1=DataFrame(response[str(temp[1])],index=range(count,count+count0))
         DF0=pd.concat([DF0,DF1])
-        max_id=min(DF0.ix[:,'id'])-1
-        count+=len(DF0.index)
+        print DF0.index
+        max_id=int(min(DF0.ix[:,'id']))-1
+        print max_id
+        count+=count0
+        print count
+
+        for i in range(0,len(response['statuses'])):
+            #twitter screen name
+            print response['statuses'][i]['user']['screen_name']
+            #name of the user
+            #    print response['statuses'][i]['user']['name']
+            #time and date at which tweet was created
+            print response['statuses'][i]['created_at']
+            #The UTC datetime that the user account was created on Twitter
+            #    print response['statuses'][i]['user']['created_at']
+            #unique id code for the user
+            #    print response['statuses'][i]['user']['id']
+            #unique id code for the user
+            print response['statuses'][i]['text']
 
 feed='from%3Acnbc'
+feed='from%3Acnn'
 response=fetchsamples(feed,'')
 temp=response.keys()
 DF0=DataFrame(response[str(temp[1])])
