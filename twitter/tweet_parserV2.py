@@ -6,17 +6,6 @@ import pandas as pd
 import json
 
 ###############################################    
-def build_dict():
-    afinnfile = open()
-    scores = {}
-    for line in afinnfile:
-  		term, score  = line.split("\t") 
-  		scores[term] = float(score)
-    return scores
-
-#build dictionary
-scores=build_dict()
-###############################################    
 
 # See Assignment 1 instructions or README for how to get these credentials
 access_token_key = "89257335-W8LCjQPcTMIpJX9vx41Niqe5ecMtw0tf2m65qsuVn"
@@ -94,30 +83,47 @@ def fetchsamples(feed,max_id):
 
 DF0=[]
 count=0
-feed='cnn'
+feed='wsj'
 response=fetchsamples(feed,'')
 count0=len(response)
 
 for i in range(0,count0):
-    DF0.append({'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
+    DF0.append({'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
 
-max_id=int(response[count0-1]['id'])-1
+max_id=str(int(response[count0-1]['id'])-1)
 print max_id
 count+=count0
 print count
 
 
 while count <= 3200:
-    if len(str(max_id))>0:
-        response=fetchsamples(feed,str(max_id))
+    if count0>0:
+        response=fetchsamples(feed,max_id)
         count0=len(response)
-        for i in range(0,count0):
-            DF0.append({'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
-        max_id=int(response[count0-1]['id'])-1
-        print max_id
-        count+=count0
-        print count
+        if count0>0:
+            for i in range(0,count0):
+                DF0.append({'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
+            max_id=str(int(response[count0-1]['id'])-1)
+            print max_id
+            count+=count0
+            print count
+        else:
+            count=3201
+
+DF1=DataFrame(DF0)
 ###############################################    
+
+###############################################    
+def build_dict():
+    afinnfile = open()
+    scores = {}
+    for line in afinnfile:
+  		term, score  = line.split("\t") 
+  		scores[term] = float(score)
+    return scores
+
+#build dictionary
+scores=build_dict()
 
 tot_sentiment=[]
 
