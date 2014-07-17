@@ -2,10 +2,13 @@
 .headers on
 
 CREATE TABLE DF1 (
-    created_at text,
+    index_ integer,
+    date_ text,
+    day_week text,
     followers integer,
     screen_name text,
-    text text
+    text text,
+    time text
 );
 
 .separator ','

@@ -4,6 +4,7 @@ import numpy as np
 from pandas import DataFrame, Series
 import pandas as pd
 import json
+import sqlite3
 
 ###############################################    
 
@@ -61,6 +62,17 @@ def twitterreq(url, method, parameters):
 
 ###############################################    
 
+def format_date(a,b,c):
+    #a: month as string
+    #b: day of month as string
+    #c: year as string
+    months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    temp=months.index(a)+1
+    if temp<10:
+        temp='0'+str(temp)
+    date_out=c+'-'+str(temp)+'-'+b
+    return date_out
+
 
 def fetchsamples(feed,max_id):
     #to build a query, see:
@@ -88,8 +100,11 @@ response=fetchsamples(feed,'')
 count0=len(response)
 
 for i in range(0,count0):
-    DF0.append({'followers': response[i]['user']['followers_count']
-,'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
+    temp1=response[i]['created_at'].encode('utf8').split()
+    temp_text=response[i]['text'].encode('utf8')
+    temp_text=temp_text.replace(',','')
+    temp_text=temp_text.replace('\n',' ')
+    DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
 
 max_id=str(int(response[count0-1]['id'])-1)
 print max_id
@@ -103,9 +118,12 @@ while count <= 3200:
         count0=len(response)
         if count0>0:
             for i in range(0,count0):
-                DF0.append({'followers': response[i]['user']['followers_count']
-,'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
-            max_id=str(int(response[count0-1]['id'])-1)
+                temp1=response[i]['created_at'].encode('utf8').split()
+                temp_text=response[i]['text'].encode('utf8')
+                temp_text=temp_text.replace(',','')
+                temp_text=temp_text.replace('\n',' ')
+                DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
+                max_id=str(int(response[count0-1]['id'])-1)
             print max_id
             count+=count0
             print count
@@ -113,6 +131,11 @@ while count <= 3200:
             count=3201
 
 DF1=DataFrame(DF0)
+DF1.to_csv('test.csv',sep=',',header=False,index=True)
+
+con=sqlite3.connect('test.db')
+name='DF2'
+DF1.to_sql(name, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
 ###############################################    
 
 ###############################################    

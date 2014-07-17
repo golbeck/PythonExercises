@@ -3,10 +3,13 @@
 
 CREATE TABLE DF1 (
     index_ integer,
-    created_at text,
+    id integer,
+    date_ text,
+    day_week text,
     followers integer,
     screen_name text,
-    text text
+    text text,
+    time text
 );
 
 .separator ','
