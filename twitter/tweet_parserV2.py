@@ -88,7 +88,8 @@ response=fetchsamples(feed,'')
 count0=len(response)
 
 for i in range(0,count0):
-    DF0.append({'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
+    DF0.append({'followers': response[i]['user']['followers_count']
+,'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
 
 max_id=str(int(response[count0-1]['id'])-1)
 print max_id
@@ -102,7 +103,8 @@ while count <= 3200:
         count0=len(response)
         if count0>0:
             for i in range(0,count0):
-                DF0.append({'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
+                DF0.append({'followers': response[i]['user']['followers_count']
+,'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':response[i]['text'].encode('utf8'),'created_at':response[i]['created_at'].encode('utf8')})
             max_id=str(int(response[count0-1]['id'])-1)
             print max_id
             count+=count0
