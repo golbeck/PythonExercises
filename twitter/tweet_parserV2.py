@@ -95,7 +95,7 @@ def fetchsamples(feed,max_id):
 
 DF0=[]
 count=0
-feed='wsj'
+feed='WSJ'
 response=fetchsamples(feed,'')
 count0=len(response)
 
@@ -131,11 +131,12 @@ while count <= 3200:
             count=3201
 
 DF1=DataFrame(DF0)
-DF1.to_csv('test.csv',sep=',',header=False,index=True)
+str_csv=feed+'.csv'
+DF1.to_csv(str_csv,sep=',',header=False,index=True)
 
-con=sqlite3.connect('test.db')
-name='DF2'
-DF1.to_sql(name, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
+#con=sqlite3.connect('test.db')
+#name='DF2'
+#DF1.to_sql(name, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
 ###############################################    
 
 ###############################################    

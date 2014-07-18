@@ -3,10 +3,10 @@
 
 CREATE TABLE DF1 (
     index_ integer,
-    id integer,
     date_ text,
     day_week text,
     followers integer,
+    id integer,
     screen_name text,
     text text,
     time text

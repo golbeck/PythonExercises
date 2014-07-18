@@ -92,71 +92,47 @@ def fetchsamples(feed,max_id):
     response = twitterreq(url, "GET", parameters)
     return json.load(response)
 ###############################################    
+def tweet_scraper(feed):
+    DF0=[]
+    count=0
+    response=fetchsamples(feed,'')
+    count0=len(response)
 
-DF0=[]
-count=0
-feed='WSJ'
-response=fetchsamples(feed,'')
-count0=len(response)
+    for i in range(0,count0):
+        temp1=response[i]['created_at'].encode('utf8').split()
+        temp_text=response[i]['text'].encode('utf8')
+        temp_text=temp_text.replace(',','')
+        temp_text=temp_text.replace('\n',' ')
+        DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
 
-for i in range(0,count0):
-    temp1=response[i]['created_at'].encode('utf8').split()
-    temp_text=response[i]['text'].encode('utf8')
-    temp_text=temp_text.replace(',','')
-    temp_text=temp_text.replace('\n',' ')
-    DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
-
-max_id=str(int(response[count0-1]['id'])-1)
-print max_id
-count+=count0
-print count
+    max_id=str(int(response[count0-1]['id'])-1)
+    print max_id
+    count+=count0
+    print count
 
 
-while count <= 3200:
-    if count0>0:
-        response=fetchsamples(feed,max_id)
-        count0=len(response)
+    while count <= 3200:
         if count0>0:
-            for i in range(0,count0):
-                temp1=response[i]['created_at'].encode('utf8').split()
-                temp_text=response[i]['text'].encode('utf8')
-                temp_text=temp_text.replace(',','')
-                temp_text=temp_text.replace('\n',' ')
-                DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
-                max_id=str(int(response[count0-1]['id'])-1)
-            print max_id
-            count+=count0
-            print count
-        else:
-            count=3201
+            response=fetchsamples(feed,max_id)
+            count0=len(response)
+            if count0>0:
+                for i in range(0,count0):
+                    temp1=response[i]['created_at'].encode('utf8').split()
+                    temp_text=response[i]['text'].encode('utf8')
+                    temp_text=temp_text.replace(',','')
+                    temp_text=temp_text.replace('\n',' ')
+                    DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
+                    max_id=str(int(response[count0-1]['id'])-1)
+                print max_id
+                count+=count0
+                print count
+            else:
+                count=3201
 
-DF1=DataFrame(DF0)
-DF1.to_csv('test1.csv',sep=',',header=False,index=True)
-
-con=sqlite3.connect('test.db')
-name='DF2'
-DF1.to_sql(name, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
-###############################################    
-
-###############################################    
-def build_dict():
-    afinnfile = open()
-    scores = {}
-    for line in afinnfile:
-  		term, score  = line.split("\t") 
-  		scores[term] = float(score)
-    return scores
-
-#build dictionary
-scores=build_dict()
-
-tot_sentiment=[]
-
-for i in range(0,count):
-    temp= DF0[1]['text'].split()
-    total = 0
-    for j in temp:
-        if j in scores.keys():                           
-            total += scores[j]
-    tot_sentiment.append(total)
-
+    DF1=DataFrame(DF0)
+    str_csv=feed+'.csv'
+    DF1.to_csv(str_csv,sep=',',header=False,index=True)
+    return 0.0
+###############################################
+feed='WSJ'
+tweet_scraper(feed)

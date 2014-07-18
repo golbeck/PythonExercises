@@ -3,6 +3,7 @@
 
 CREATE TABLE DF1 (
     index_ integer,
+    id integer,
     date_ text,
     day_week text,
     followers integer,
