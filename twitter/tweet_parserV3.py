@@ -134,8 +134,8 @@ def tweet_scraper(feed):
     DF1.to_csv(str_csv,sep=',',header=False,index=True)
     return 0.0
 ###############################################
-feed='CNBC'
-tweet_scraper(feed)
+#feed='CNBC'
+#tweet_scraper(feed)
 
 temp1=pd.io.parsers.read_table('nymag_tweets.csv',sep=',',index_col=0,header=None)
 temp2=pd.io.parsers.read_table('streetEYE.csv',sep=',',index_col=0,header=None)
@@ -143,7 +143,13 @@ temp3=pd.io.parsers.read_table('business_insider.csv',sep=',',index_col=0,header
 temp=temp1.merge(temp2,how='outer')
 temp=temp.merge(temp3,how='outer')
 temp=temp.drop([102])
-
+temp=temp.reindex(range(0,len(temp)))
 temp.to_csv('tweet_master_list.csv',header=False)
+
+for i in range(0,len(temp)):
+    feed=temp.ix[i,1]
+    tweet_scraper(feed)
+
+
 
 
