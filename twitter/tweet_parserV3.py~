@@ -146,8 +146,9 @@ temp=temp.drop([102])
 temp=temp.reindex(range(0,len(temp)))
 temp.to_csv('tweet_master_list.csv',header=False)
 
-for i in range(0,len(temp)):
-    feed=temp.ix[i,1]
+#for i in range(0,len(temp)):
+for i in range(0,4):
+    feed=temp.ix[i,0]
     tweet_scraper(feed)
 
 
