@@ -7,11 +7,13 @@ CREATE TABLE DF1 (
     day_week text,
     followers integer,
     id integer,
+    retweet_count integer,
     screen_name text,
     text text,
-    time text
+    time text,
+    user_id integer
 );
 
 .separator ','
-.import ./test.csv DF1
+.import ./CNBC.csv DF1
 

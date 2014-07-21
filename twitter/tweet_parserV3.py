@@ -103,7 +103,7 @@ def tweet_scraper(feed):
         temp_text=response[i]['text'].encode('utf8')
         temp_text=temp_text.replace(',','')
         temp_text=temp_text.replace('\n',' ')
-        DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
+        DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
 
     max_id=str(int(response[count0-1]['id'])-1)
     print max_id
@@ -121,7 +121,7 @@ def tweet_scraper(feed):
                     temp_text=response[i]['text'].encode('utf8')
                     temp_text=temp_text.replace(',','')
                     temp_text=temp_text.replace('\n',' ')
-                    DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3]})
+                    DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
                     max_id=str(int(response[count0-1]['id'])-1)
                 print max_id
                 count+=count0
@@ -136,3 +136,11 @@ def tweet_scraper(feed):
 ###############################################
 feed='CNBC'
 tweet_scraper(feed)
+
+temp1=pd.io.parsers.read_table('nymag_tweets.csv',sep=',',index_col=0,header=None)
+temp2=pd.io.parsers.read_table('streetEYE.csv',sep=',',index_col=0,header=None)
+temp3=pd.io.parsers.read_table('business_insider.csv',sep=',',index_col=0,header=None)
+temp=temp1.merge(temp2,how='outer')
+temp.merge(temp3,how='outer')
+
+
