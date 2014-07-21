@@ -141,6 +141,9 @@ temp1=pd.io.parsers.read_table('nymag_tweets.csv',sep=',',index_col=0,header=Non
 temp2=pd.io.parsers.read_table('streetEYE.csv',sep=',',index_col=0,header=None)
 temp3=pd.io.parsers.read_table('business_insider.csv',sep=',',index_col=0,header=None)
 temp=temp1.merge(temp2,how='outer')
-temp.merge(temp3,how='outer')
+temp=temp.merge(temp3,how='outer')
+temp=temp.drop([102])
+
+temp.to_csv('tweet_master_list.csv',header=False)
 
 
