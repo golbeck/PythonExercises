@@ -1,10 +1,20 @@
+#tools for accessing the twitter API
 import oauth2 as oauth
 import urllib2 as urllib
+#tweets are output in JSON format. Use this package to load the data into python
+import json
+#use to build a database of tweets
+import sqlite3
+#use for processing the tweets
+import nltk
+from nltk import word_tokenize
+#edit stopwords
+from nltk.corpus import stopwords
+stopwords.words('english')
+
 import numpy as np
 from pandas import DataFrame, Series
 import pandas as pd
-import json
-import sqlite3
 
 ###############################################    
 ###############################################    
@@ -104,8 +114,33 @@ def fetchsamples(feed,max_id):
 def tweet_scraper(feed):
     DF0=[]
     count=0
+    #load the output from the twitter API into response
     response=fetchsamples(feed,'')
     count0=len(response)
+
+    for i in range(count0):
+    
+    
+        temp1=response[i]['text'].encode('utf-8')
+        temp1=word_tokenize(temp1)
+        #remove punctuation
+        
+        #lower case
+        
+        #remove stopwords
+        
+        #stem the words
+        
+        #get rid of links
+        
+        #process hashtags? (see DATA SCIENCE 2014 Assignment 1)
+        
+        
+        
+        
+        
+        
+        
 
     for i in range(0,count0):
         temp1=response[i]['created_at'].encode('utf8').split()

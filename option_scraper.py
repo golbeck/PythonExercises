@@ -6,6 +6,17 @@ from lxml.html import parse
 from urllib2 import urlopen
 from pandas.io.parsers import TextParser
 
+
+def _unpack(row,kind='td'):
+    elts=row.findall('.//%s' % kind)
+    return [val.text_content() for val in elts]
+
+def parse_options_data(table):
+    rows=table.findall('.//tr')
+    header=_unpack(rows[0],kind='th')
+    data=[_unpack(r) for r in rows[1:]]
+    return TextParser(data,names=header).get_chunk()
+
 def main():
     parsed=parse(urlopen('http://finance.yahoo.com/q/op?s=AAPL+Options'))
     doc=parsed.getroot()
@@ -29,15 +40,6 @@ def main():
 #    put_data=parse_options_data(puts)
     call_data[:10]
 
-def _unpack(row,kind='td'):
-    elts=row.findall('.//%s' % kind)
-    return [val.text_content() for val in elts]
-
-def parse_options_data(table):
-    rows=table.findall('.//tr')
-    header=_unpack(rows[0],kind='th')
-    data=[_unpack(r) for r in rows[1:]]
-    return TextParser(data,names=header).get_chunk()
 
 
 if __name__ == '__main__':
