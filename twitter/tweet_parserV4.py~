@@ -1,10 +1,22 @@
+#tools for accessing the twitter API
 import oauth2 as oauth
 import urllib2 as urllib
+#tweets are output in JSON format. Use this package to load the data into python
+import json
+#use to build a database of tweets
+import sqlite3
+#use for processing the tweets
+import nltk
+from nltk import word_tokenize
+#edit stopwords
+from nltk.corpus import stopwords
+stopwords = stopwords.words('english')
+#stemmer used
+porter = nltk.PorterStemmer()
+
 import numpy as np
 from pandas import DataFrame, Series
 import pandas as pd
-import json
-import sqlite3
 
 ###############################################    
 ###############################################    
@@ -97,6 +109,7 @@ def fetchsamples(feed,max_id):
         url=url+'&max_id='+max_id
     parameters = []
     response = twitterreq(url, "GET", parameters)
+    #convert a json object to a python object (in this case, returns a list)
     return json.load(response)
 ###############################################    
 ###############################################    
@@ -104,8 +117,56 @@ def fetchsamples(feed,max_id):
 def tweet_scraper(feed):
     DF0=[]
     count=0
+    #load the output from the twitter API into response
     response=fetchsamples(feed,'')
     count0=len(response)
+
+    for i in range(count0):
+    
+        #first convert from unicode to a string
+        temp1=response[i]['text'].strip().encode('utf-8')
+        #use NLTK tokenizer to parse the string into individual tokens and save in a list
+        temp1=word_tokenize(temp1)
+        #lower case
+        temp1=[w.lower() for w in temp1]
+        
+        #remove stopwords
+        #stopwords = [‘the’,’it’,’she’,’he’]
+        temp1 = [w for w in temp1 if w not in stopwords]
+        #stem the words
+        temp1=[porter.stem(w) for w in temp1]
+        #extract unique words
+        temp1=set(temp1)
+        #remove punctuation (and non-alphanumeric characters)
+        #CAUTION: this may remove hashtags and stocktwits tickers
+        #better to first process by finding words with # or ! at
+        #the beginning of the word
+        temp1=[replace[
+        temp1=[w for w in temp1 if w.isalpha()]
+        #get rid of links
+        temp1=[w for w in temp1 if w not in w.startswith('htt')]
+        
+        #process hashtags? (see DATA SCIENCE 2014 Assignment 1)
+
+        try:
+            hashtag = response[i]['entities']['hashtags']
+            if len(hashtag) != 0:
+                for i in range(0,len(hashtag)-1):
+                    word=hashtag[i]['text'].encode('utf-8')
+                    if word in hashtags:
+                        hashtags[word]+=1.0
+                    else:
+                        hashtags[word]=1.0
+        except:
+            pass
+        
+        #n-grams. Use to extract noun phrases/adverbs
+        nltk.ngrams(text4, 5)
+        #extract company names, tickers
+        tickers=[]
+        firms=[]
+        stock_label=[w in temp1 if w in tickers]
+        
 
     for i in range(0,count0):
         temp1=response[i]['created_at'].encode('utf8').split()

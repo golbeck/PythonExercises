@@ -8,9 +8,17 @@ import sqlite3
 #use for processing the tweets
 import nltk
 from nltk import word_tokenize
+
 #edit stopwords
 from nltk.corpus import stopwords
-stopwords.words('english')
+stopwords = stopwords.words('english')
+
+#lemmatizer: Returns the input word unchanged if it cannot be found in WordNet.
+from nltk.stem import WordNetLemmatizer
+wnl = WordNetLemmatizer()
+
+#regular expressions package
+import re
 
 import numpy as np
 from pandas import DataFrame, Series
@@ -107,6 +115,7 @@ def fetchsamples(feed,max_id):
         url=url+'&max_id='+max_id
     parameters = []
     response = twitterreq(url, "GET", parameters)
+    #convert a json object to a python object (in this case, returns a list)
     return json.load(response)
 ###############################################    
 ###############################################    
@@ -119,28 +128,67 @@ def tweet_scraper(feed):
     count0=len(response)
 
     for i in range(count0):
-    
-    
-        temp1=response[i]['text'].encode('utf-8')
-        temp1=word_tokenize(temp1)
-        #remove punctuation
-        
+        temp1=response[i]['created_at'].encode('utf-8').split()
+        #first strip of endline characters
+        temp_text=response[i]['text'].strip()
+        #use NLTK tokenizer to parse the string into individual tokens and save in a list
+        temp_text=word_tokenize(temp_text)
+        #covnert from unicode to string
+        temp_text=[w.encode('utf-8') for w in temp_text]
         #lower case
+        temp_text=[w.lower() for w in temp_text]
         
-        #remove stopwords
-        
-        #stem the words
-        
+        #lemmatize the words
+        temp_text=[wnl.lemmatize(w).encode('utf-8') for w in temp_text if w.isalpha()]
+        #save $+words as labels for the ticker first before removing them
+
+        #first process by finding words with $ or ! at
+        #the beginning of the word (retain hashtags and stocktwits identifiers)
+        temp_text=[re.sub(r'^$','',w) for w in temp_text]
+        temp_text=[re.sub(r'^#','',w) for w in temp_text]
+        #then remove punctuation (and non-alphanumeric characters)
+        temp_text=[w for w in temp_text if w.isalpha()]
+
         #get rid of links
+        temp_text=[w for w in temp_text if not w.startswith('htt')]
+
+#        #extract unique words
+##CAUTION: this changes the order
+#        temp_text=set(temp_text)
+
+
+#        #remove stopwords
+#        #stopwords = [‘the’,’it’,’she’,’he’]
+#        temp_text = [w for w in temp1 if w not in stopwords]
         
-        #process hashtags? (see DATA SCIENCE 2014 Assignment 1)
-        
-        
-        
-        
-        
-        
-        
+#        #process hashtags? (see DATA SCIENCE 2014 Assignment 1)
+
+#        try:
+#            hashtag = response[i]['entities']['hashtags']
+#            if len(hashtag) != 0:
+#                for i in range(0,len(hashtag)-1):
+#                    word=hashtag[i]['text'].encode('utf-8')
+#                    if word in hashtags:
+#                        hashtags[word]+=1.0
+#                    else:
+#                        hashtags[word]=1.0
+#        except:
+#            pass
+#        
+#        #find all adverbs
+#        re.findall(r"\w+ly", temp1)
+#        #n-grams. Use to extract noun phrases/adverbs
+#        nltk.ngrams(text4, 5)
+#        #extract company names, tickers
+#        tickers=[]
+#        firms=[]
+#        stock_label=[w in temp1 if w in tickers]
+        temp1=response[i]['created_at'].encode('utf8').split()
+        temp_text=response[i]['text'].encode('utf8')
+        temp_text=temp_text.replace(',','')
+        temp_text=temp_text.replace('\n',' ')
+        DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode ('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
+
 
     for i in range(0,count0):
         temp1=response[i]['created_at'].encode('utf8').split()
