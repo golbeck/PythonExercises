@@ -109,9 +109,14 @@ def tweet_scraper(feed):
 
     for i in range(0,count0):
         temp1=response[i]['created_at'].encode('utf8').split()
-        temp_text=response[i]['text'].encode('utf8')
-        temp_text=temp_text.replace(',','')
-        temp_text=temp_text.replace('\n',' ')
+
+#        temp_text=response[i]['text'].encode('utf8')
+#        temp_text=temp_text.replace(',','')
+#        temp_text=temp_text.replace('\n',' ')
+        
+        #first strip of endline characters
+        temp_text=response[i]['text'].strip()
+
         DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
 
     max_id=str(int(response[count0-1]['id'])-1)
@@ -127,9 +132,13 @@ def tweet_scraper(feed):
             if count0>0:
                 for i in range(0,count0):
                     temp1=response[i]['created_at'].encode('utf8').split()
-                    temp_text=response[i]['text'].encode('utf8')
-                    temp_text=temp_text.replace(',','')
-                    temp_text=temp_text.replace('\n',' ')
+
+#                    temp_text=response[i]['text'].encode('utf8')
+#                    temp_text=temp_text.replace(',','')
+#                    temp_text=temp_text.replace('\n',' ')
+
+                    #first strip of endline characters
+                    temp_text=response[i]['text'].strip()
                     DF0.append({'id':int(response[i]['id']),'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
                     max_id=str(int(response[count0-1]['id'])-1)
                 print max_id
@@ -159,7 +168,7 @@ temp.to_csv('tweet_master_list.csv',header=False)
 
 #for i in range(0,len(temp)):
 for i in range(0,4):
-    feed=temp.ix[i,0]
+    feed=temp.ix[i,1]
     tweet_scraper(feed)
 
 

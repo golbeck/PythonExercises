@@ -7,6 +7,8 @@ import json
 import sqlite3
 
 ###############################################    
+###############################################    
+###############################################    
 
 # See Assignment 1 instructions or README for how to get these credentials
 access_token_key = "89257335-W8LCjQPcTMIpJX9vx41Niqe5ecMtw0tf2m65qsuVn"
@@ -33,36 +35,38 @@ Construct, sign, and open a twitter request
 using the hard-coded credentials above.
 '''
 ###############################################    
+###############################################    
+###############################################    
 
 def twitterreq(url, method, parameters):
-  req = oauth.Request.from_consumer_and_token(oauth_consumer,
-                                             token=oauth_token,
-                                             http_method=http_method,
-                                             http_url=url,
-                                             parameters=parameters)
+    req = oauth.Request.from_consumer_and_token(oauth_consumer,token=oauth_token,
+            http_method=http_method,http_url=url,parameters=parameters)
 
-  req.sign_request(signature_method_hmac_sha1, oauth_consumer, oauth_token)
+    req.sign_request(signature_method_hmac_sha1, oauth_consumer, oauth_token)
 
-  headers = req.to_header()
+    headers = req.to_header()
 
-  if http_method == "POST":
-    encoded_post_data = req.to_postdata()
-  else:
-    encoded_post_data = None
-    url = req.to_url()
+    if http_method == "POST":
+        encoded_post_data = req.to_postdata()
+    else:
+        encoded_post_data = None
+        url = req.to_url()
 
-  opener = urllib.OpenerDirector()
-  opener.add_handler(http_handler)
-  opener.add_handler(https_handler)
+    opener = urllib.OpenerDirector()
+    opener.add_handler(http_handler)
+    opener.add_handler(https_handler)
 
-  response = opener.open(url, encoded_post_data)
+    response = opener.open(url, encoded_post_data)
 
-  return response
+    return response
 
 
 ###############################################    
+###############################################    
+###############################################    
 
 def format_date(a,b,c):
+    #converts date to standard format
     #a: month as string
     #b: day of month as string
     #c: year as string
@@ -74,6 +78,9 @@ def format_date(a,b,c):
     return date_out
 
 
+###############################################    
+###############################################    
+###############################################    
 def fetchsamples(feed,max_id):
     #to build a query, see:
     #https://dev.twitter.com/docs/using-search
@@ -91,6 +98,8 @@ def fetchsamples(feed,max_id):
     parameters = []
     response = twitterreq(url, "GET", parameters)
     return json.load(response)
+###############################################    
+###############################################    
 ###############################################    
 def tweet_scraper(feed):
     DF0=[]
@@ -133,6 +142,8 @@ def tweet_scraper(feed):
     str_csv=feed+'.csv'
     DF1.to_csv(str_csv,sep=',',header=False,index=True)
     return 0.0
+###############################################    
+###############################################    
 ###############################################
 #feed='CNBC'
 #tweet_scraper(feed)
