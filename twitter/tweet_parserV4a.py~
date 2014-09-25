@@ -184,6 +184,37 @@ def tweet_scraper(feed):
         #find ticker symbols
         ticks=[w for w in temp_text if w in tickers]
 
+#        #extract unique words
+##CAUTION: this changes the order, so does this last
+#        temp_text=set(temp_text)
+
+
+#        #remove stopwords
+#        #stopwords = [‘the’,’it’,’she’,’he’]
+#        temp_text = [w for w in temp1 if w not in stopwords]
+        
+#        #process hashtags? (see DATA SCIENCE 2014 Assignment 1)
+
+#        try:
+#            hashtag = response[i]['entities']['hashtags']
+#            if len(hashtag) != 0:
+#                for i in range(0,len(hashtag)-1):
+#                    word=hashtag[i]['text'].encode('utf-8')
+#                    if word in hashtags:
+#                        hashtags[word]+=1.0
+#                    else:
+#                        hashtags[word]=1.0
+#        except:
+#            pass
+#        
+#        #find all adverbs
+#        re.findall(r"\w+ly", temp1)
+#        #n-grams. Use to extract noun phrases/adverbs
+#        nltk.ngrams(text4, 5)
+#        #extract company names, tickers
+#        tickers=[]
+#        firms=[]
+#        stock_label=[w in temp1 if w in tickers]
         DF0.append({'id':int(response[i]['id']),'tickers':ticks,'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode ('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
 
 
@@ -249,7 +280,7 @@ temp=temp.reindex(range(0,len(temp)))
 temp.to_csv('tweet_master_list.csv',header=False)
 
 #for i in range(0,len(temp)):
-for i in range(0,1):
+for i in range(0,4):
     feed=temp.ix[i,1]
 #    tweet_scraper(feed)
     DF0=[]
@@ -291,6 +322,37 @@ for i in range(0,1):
         #find ticker symbols
         ticks=[w for w in temp_text if w in tickers]
 
+#        #extract unique words
+##CAUTION: this changes the order, so does this last
+#        temp_text=set(temp_text)
+
+
+#        #remove stopwords
+#        #stopwords = [‘the’,’it’,’she’,’he’]
+#        temp_text = [w for w in temp1 if w not in stopwords]
+        
+#        #process hashtags? (see DATA SCIENCE 2014 Assignment 1)
+
+#        try:
+#            hashtag = response[i]['entities']['hashtags']
+#            if len(hashtag) != 0:
+#                for i in range(0,len(hashtag)-1):
+#                    word=hashtag[i]['text'].encode('utf-8')
+#                    if word in hashtags:
+#                        hashtags[word]+=1.0
+#                    else:
+#                        hashtags[word]=1.0
+#        except:
+#            pass
+#        
+#        #find all adverbs
+#        re.findall(r"\w+ly", temp1)
+#        #n-grams. Use to extract noun phrases/adverbs
+#        nltk.ngrams(text4, 5)
+#        #extract company names, tickers
+#        tickers=[]
+#        firms=[]
+#        stock_label=[w in temp1 if w in tickers]
         DF0.append({'id':int(response[i]['id']),'tickers':ticks,'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode ('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
 
 
