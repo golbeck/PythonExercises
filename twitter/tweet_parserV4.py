@@ -280,8 +280,8 @@ temp=temp.reindex(range(0,len(temp)))
 temp.to_csv('tweet_master_list.csv',header=False)
 
 #for i in range(0,len(temp)):
-for i in range(0,4):
-    feed=temp.ix[i,1]
+for j in range(0,4):
+    feed=temp.ix[j,1]
 #    tweet_scraper(feed)
     DF0=[]
     count=0
@@ -363,40 +363,39 @@ for i in range(0,4):
 
 
     while count <= 3200:
+        response=fetchsamples(feed,max_id)
+        count0=len(response)
         if count0>0:
-            response=fetchsamples(feed,max_id)
-            count0=len(response)
-            if count0>0:
-                for i in range(0,count0):
-                    temp1=response[i]['created_at'].encode('utf8').split()
-                    temp_text=response[i]['text'].strip()
-                    temp_text=re.sub('[,;"\'?():_`/\.]','',temp_text)
+            for i in range(0,count0):
+                temp1=response[i]['created_at'].encode('utf8').split()
+                temp_text=response[i]['text'].strip()
+                temp_text=re.sub('[,;"\'?():_`/\.]','',temp_text)
 
                     #custom tokenizer using the pattern defined above (beginning of file)
-                    temp_text=nltk.regexp_tokenize(temp_text, pattern)
+                temp_text=nltk.regexp_tokenize(temp_text, pattern)
                     #covnert from unicode to string
-                    temp_text=[w.encode('utf-8') for w in temp_text]
+                temp_text=[w.encode('utf-8') for w in temp_text]
                     #lower case
-                    temp_text=[w.lower() for w in temp_text]
+                temp_text=[w.lower() for w in temp_text]
 
                     #first process by finding words with $ or ! at
-                    temp_text=[re.sub(r'@','',w) for w in temp_text]
-                    temp_text=[re.sub(r'$','',w) for w in temp_text]
-                    temp_text=[re.sub(r'#','',w) for w in temp_text]
+                temp_text=[re.sub(r'@','',w) for w in temp_text]
+                temp_text=[re.sub(r'$','',w) for w in temp_text]
+                temp_text=[re.sub(r'#','',w) for w in temp_text]
 
                     #get rid of links
-                    temp_text=[w for w in temp_text if not w.startswith('htt')]
+                temp_text=[w for w in temp_text if not w.startswith('htt')]
 
                     #find ticker symbols
-                    ticks=[w for w in temp_text if w in tickers]
+                ticks=[w for w in temp_text if w in tickers]
 
-                    DF0.append({'id':int(response[i]['id']),'tickers':ticks,'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
-                    max_id=str(int(response[count0-1]['id'])-1)
-                print max_id
-                count+=count0
-                print count
-            else:
-                count=3201
+                DF0.append({'id':int(response[i]['id']),'tickers':ticks,'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
+                max_id=str(int(response[count0-1]['id'])-1)
+            print max_id
+            count+=count0
+            print count
+        else:
+            count=3201
 
     DF1=DataFrame(DF0)
     str_csv=feed+'.csv'

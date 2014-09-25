@@ -189,7 +189,7 @@ tweets=tweets.reindex(range(0,len(tweets)))
 tweets.to_csv('tweet_master_list.csv',header=False)
 
 #for j in range(0,len(temp)):
-for j in range(0,4):
+for j in range(5,11):
     feed=tweets.ix[j,1]
     DF0=[]
     count=0
@@ -200,17 +200,18 @@ for j in range(0,4):
     N=3000
 
     while count <= N:
-        #load the output from the twitter API into response
-        response=fetchsamples(feed,max_id)
-        count0=len(response)
         if count0>0:
-            feed_create_list(response,pattern,tickers,DF0)
-            max_id=str(int(response[count0-1]['id'])-1)
-            print max_id
-            count+=count0
-            print count
-        else:
-            count=N+1
+            #load the output from the twitter API into response
+            response=fetchsamples(feed,max_id)
+            count0=len(response)
+            if count0>0:
+                feed_create_list(response,pattern,tickers,DF0)
+                max_id=str(int(response[count0-1]['id'])-1)
+                print max_id
+                count+=count0
+                print count
+            else:
+                count=N+1
 
     DF1=DataFrame(DF0)
     str_csv='Tweets/'+feed+'.csv'
