@@ -175,10 +175,17 @@ tweets=tweets.merge(tweets3,how='outer')
 tweets=tweets.drop([102])
 tweets=tweets.reindex(range(0,len(tweets)))
 tweets.to_csv('tweet_master_list.csv',header=False)
+#remove bad names
+tweets=tweets[tweets[1]!='trovwolv']
+tweets=tweets[tweets[1]!='ldelevigne']
+tweets=tweets[tweets[1]!='zlehn']
+tweets.index=range(len(tweets))
+tweets=tweets.drop([98],axis=0)
+tweets.index=range(len(tweets))
 
 #for j in range(0,len(temp)):
 count_API=0
-for j in range(20,40):
+for j in range(136,len(tweets)):
     feed=tweets.ix[j,1]
     DF0=[]
     count=0
@@ -189,20 +196,25 @@ for j in range(20,40):
 
     while count <= N:
         #load the output from the twitter API into response
-        response=fetchsamples(feed,max_id)
+        try:
+            response=fetchsamples(feed,max_id)
+            count0=len(response)
+        except:
+            count0=0
         count_API+=1
-        print count_API
-        count0=len(response)
+        print 'API calls: '+str(count_API)
+        
         if count0>0:
             for i in range(0,count0):
                 DF0=feed_create_list(i,response,pattern,tickers,DF0)
 
             max_id=str(int(response[count0-1]['id'])-1)
-            print max_id
+#            print max_id
             count+=count0
             print count
         else:
             count=N+1
+            print count
 
     DF1=DataFrame(DF0)
     str_csv='Tweets/'+feed+'.csv'

@@ -46,9 +46,9 @@ tickers2=list(tickers1['Symbol'])
 #tickers3=[w.lower() for w in tickers2]
 tickers3=[re.sub(r'\s','',w) for w in tickers2]
 tickers=set(tickers3)
-###############################################    
-###############################################    
-###############################################    
+##############################################################################################
+##############################################################################################
+##############################################################################################
 access_token_key = "89257335-W8LCjQPcTMIpJX9vx41Niqe5ecMtw0tf2m65qsuVn"
 access_token_secret = "5tmU9RDxP3tiFShmtDcFE5VVzWy7dGBRvvDp6uwoZWyW2"
 
@@ -72,9 +72,9 @@ https_handler = urllib.HTTPSHandler(debuglevel=_debug)
 Construct, sign, and open a twitter request
 using the hard-coded credentials above.
 '''
-###############################################    
-###############################################    
-###############################################    
+##############################################################################################
+##############################################################################################
+##############################################################################################
 def twitterreq(url, method, parameters):
     req = oauth.Request.from_consumer_and_token(oauth_consumer,token=oauth_token,
             http_method=http_method,http_url=url,parameters=parameters)
@@ -98,9 +98,9 @@ def twitterreq(url, method, parameters):
         response=[]
 
     return response
-###############################################    
-###############################################    
-###############################################    
+##############################################################################################
+##############################################################################################
+##############################################################################################
 def format_date(a,b,c):
     #converts date to standard format
     #a: month as string
@@ -112,9 +112,9 @@ def format_date(a,b,c):
         temp='0'+str(temp)
     date_out=c+'-'+str(temp)+'-'+b
     return date_out
-###############################################    
-###############################################    
-###############################################    
+##############################################################################################
+##############################################################################################
+##############################################################################################
 def fetchsamples(feed,max_id):
     #to build a query, see:
     #https://dev.twitter.com/docs/using-search
@@ -137,9 +137,9 @@ def fetchsamples(feed,max_id):
     except:
         response=[]
     return response
-###############################################    
-###############################################    
-###############################################    
+##############################################################################################
+##############################################################################################
+##############################################################################################
 def feed_create_list(i,response,pattern,tickers,DF0):
     temp1=response[i]['created_at'].encode('utf8').split()
     temp_text=response[i]['text'].strip()
@@ -164,9 +164,9 @@ def feed_create_list(i,response,pattern,tickers,DF0):
     DF0.append({'id':int(response[i]['id']),'tickers':ticks,'followers': response[i]['user']['followers_count'],'screen_name':response[i]['user']['screen_name'].encode('utf8'),'text':temp_text,'day_week':temp1[0],'date':format_date(temp1[1],temp1[2],temp1[5]),'time':temp1[3],'retweet_count':response[i]['retweet_count'],'user_id':response[i]['user']['id']})
 
     return DF0
-###############################################    
-###############################################    
-###############################################
+##############################################################################################
+##############################################################################################
+##############################################################################################
 tweets1=pd.io.parsers.read_table('nymag_tweets.csv',sep=',',index_col=0,header=None)
 tweets2=pd.io.parsers.read_table('streetEYE.csv',sep=',',index_col=0,header=None)
 tweets3=pd.io.parsers.read_table('business_insider.csv',sep=',',index_col=0,header=None)
@@ -177,10 +177,15 @@ tweets=tweets.reindex(range(0,len(tweets)))
 tweets.to_csv('tweet_master_list.csv',header=False)
 #remove bad names
 tweets=tweets[tweets[1]!='trovwolv']
+tweets=tweets[tweets[1]!='ldelevigne']
+tweets=tweets[tweets[1]!='zlehn']
+tweets.index=range(len(tweets))
+tweets=tweets.drop([98],axis=0)
+tweets.index=range(len(tweets))
 
 #for j in range(0,len(temp)):
 count_API=0
-for j in range(52,62):
+for j in range(136,len(tweets)):
     feed=tweets.ix[j,1]
     DF0=[]
     count=0

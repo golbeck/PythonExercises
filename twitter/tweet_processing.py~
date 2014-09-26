@@ -1,4 +1,19 @@
-
+#use for processing the tweets
+import nltk
+from nltk import word_tokenize
+pattern = r'''(?x)    # set flag to allow verbose regexps
+    ([A-Z]\.)+        # abbreviations, e.g. U.S.A.
+    | \w+(-\w+)*        # words with optional internal hyphens
+    | \$?\d+(\.\d+)?%?  # currency and percentages, e.g. $12.40, 82%
+    | \$\w+  # currency and percentages, e.g. $12.40, 82%
+    | @\S+             # tokenize twitter mentions
+    | \.\.\.            # ellipsis
+    | [][.,;"'?():-_`]  # these are separate tokens; includes ], [
+    '''
+##############################################################################################
+##############################################################################################
+##############################################################################################
+#build a dictionary of contractions
 contractions={'arent':'are not','cant':'cannot','couldnt':'could not','didnt':'did not','doesnt':'does not','dont':'do not','hadnt':'had not','hasnt':'has not','havent':'have not','hed':'he had', 'hell':'he will','hes':'he is','Id':'I had','Ill':'I will','Im':'I am',
 'Ive':'I have','isnt':'is not','lets':'let us','mightnt':'might not','mustnt':'must not','shant':'shall not','shed':'she had',
 'shell':'she will','shes':'she is','shouldnt':'should not','thats':'that is','theres':'there is','theyd':'they had','theyll':'they will',
@@ -13,3 +28,13 @@ for i in range(len(contractions)):
     contractions[keys_new[i]]=contractions[keys_old[i]]
     if not keys_new[i]==keys_old[i]:
         del contractions[keys_old[i]]
+##############################################################################################
+##############################################################################################
+##############################################################################################
+#swap out contractions
+temp=['this','is','test','werent','mustnt','again','help']
+for i in range(len(temp)):
+    if temp[i] in contractions.keys():
+        temp_text=nltk.regexp_tokenize(contractions[temp[i]], pattern)
+        temp[i]=temp_text[0]
+        temp.insert(i+1,temp_text[1])
