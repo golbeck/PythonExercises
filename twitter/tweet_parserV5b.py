@@ -181,11 +181,14 @@ tweets=tweets[tweets[1]!='ldelevigne']
 tweets=tweets[tweets[1]!='zlehn']
 tweets.index=range(len(tweets))
 tweets=tweets.drop([98],axis=0)
+tweets=tweets[tweets[1]!='pwmorski']
+tweets=tweets[tweets[1]!='dutch_book']
+tweets=tweets[tweets[1]!='pragcapitalist']
 tweets.index=range(len(tweets))
 
 #for j in range(0,len(temp)):
 count_API=0
-for j in range(136,len(tweets)):
+for j in range(228,len(tweets)):
     feed=tweets.ix[j,1]
     DF0=[]
     count=0
