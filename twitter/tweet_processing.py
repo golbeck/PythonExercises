@@ -1,5 +1,10 @@
-#use for processing the tweets
+#if in the twitter directory, change to Tweets directory
+cd Tweets
+
 import nltk
+import sqlite3
+from pandas import DataFrame, Series
+import pandas as pd
 from nltk import word_tokenize
 pattern = r'''(?x)    # set flag to allow verbose regexps
     ([A-Z]\.)+        # abbreviations, e.g. U.S.A.
@@ -10,6 +15,38 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     | \.\.\.            # ellipsis
     | [][.,;"'?():-_`]  # these are separate tokens; includes ], [
     '''
+
+con=sqlite3.connect('test.db')
+#import all of the tweets from the .csv files
+import glob
+tweet_list=[]
+tab_errors=[]
+path = "*.csv"
+for fname in glob.glob(path):
+    temp_text=nltk.regexp_tokenize(fname, pattern)
+    name_temp=temp_text[0]
+    tweet_list.append(name_temp.lower())
+    try:
+        DF1=pd.io.parsers.read_table(fname,sep=',',index_col=0,header=None)
+        DF1.to_sql(name_temp, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
+    except:
+        print 'there was an error: '+fname
+        tab_errors.append(fname)
+        continue
+
+#manually create db tables for errors
+fname_temp='forexguy'
+DF1=pd.io.parsers.read_table(tab_errors[0],sep=',',index_col=0,header=None)
+DF1.to_sql(fname_temp, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
+#sort tweet_list
+tweet_list=list(set(tweet_list))
+tweet_list.sort()
+
+#con=sqlite3.connect('test.db')
+#name='DF2'
+#DF1.to_sql(name, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
+
+
 ##############################################################################################
 ##############################################################################################
 ##############################################################################################

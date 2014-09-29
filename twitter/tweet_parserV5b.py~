@@ -183,12 +183,21 @@ tweets.index=range(len(tweets))
 tweets=tweets.drop([98],axis=0)
 tweets=tweets[tweets[1]!='pwmorski']
 tweets=tweets[tweets[1]!='dutch_book']
+tweets=tweets[tweets[1]!='pragcapitalist']
+tweets=tweets[tweets[1]!='trendrida']
+tweets=tweets[tweets[1]!='saraeisenfx']
+tweets=tweets[tweets[1]!='efficiencynow']
+tweets=tweets[tweets[1]!='austan_goolsbee']
 tweets.index=range(len(tweets))
+for i in range(0,len(tweets)):
+    tweets.ix[i,1]=tweets.ix[i,1].lower()
+tweets=list(set(tweets[1]))
+
 
 #for j in range(0,len(temp)):
 count_API=0
-for j in range(190,len(tweets)):
-    feed=tweets.ix[j,1]
+for j in range(228,len(tweets)):
+    feed=tweets[j]
     DF0=[]
     count=0
     #set count0 to 1 so that the nested if statement is initially executed

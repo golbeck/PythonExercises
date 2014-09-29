@@ -1,0 +1,17 @@
+#for more details, see:
+#https://sqlite.org/cli.html
+
+sqlite3 "database.db"
+#displays tables
+.tables
+#In column mode, each record is shown on a separate line with the data aligned in columns. For example:
+.mode column
+select * from pdacosta;
+#In "line" mode, each column in a row of the database is shown on a line by itself. Each line consists of the column name, an equal sign and the column data. Successive records are separated by a blank line. Here is an example of line mode output:
+.mode line
+select * from pdacosta;
+
+
+
+
+.exit
