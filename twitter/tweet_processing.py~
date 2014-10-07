@@ -1,5 +1,6 @@
-#use for processing the tweets
+#if in the twitter directory, change to Tweets directory
 cd Tweets
+
 import nltk
 import sqlite3
 from pandas import DataFrame, Series

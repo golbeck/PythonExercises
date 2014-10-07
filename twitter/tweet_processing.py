@@ -16,8 +16,9 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     | [][.,;"'?():-_`]  # these are separate tokens; includes ], [
     '''
 
-con=sqlite3.connect('test.db')
 #import all of the tweets from the .csv files
+#into a SQL database "tweets.db"
+con=sqlite3.connect('tweets.db')
 import glob
 tweet_list=[]
 tab_errors=[]
@@ -41,10 +42,6 @@ DF1.to_sql(fname_temp, con, flavor='sqlite', if_exists='fail', index=True, index
 #sort tweet_list
 tweet_list=list(set(tweet_list))
 tweet_list.sort()
-
-#con=sqlite3.connect('test.db')
-#name='DF2'
-#DF1.to_sql(name, con, flavor='sqlite', if_exists='fail', index=True, index_label='index_')
 
 
 ##############################################################################################
