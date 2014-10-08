@@ -122,17 +122,40 @@ DF_tick_count=DataFrame.from_dict(tick_count,orient='index')
 #sort ticker counts
 DF_tick_count=DF_tick_count.sort(columns=0,ascending=False)
 #################################################
-#list of indices corresponding to each ticker symbol
-tick_indices={}
-i=0
-for x in tick_list:
-    i+=1
-    print i
-    print ' out of '
-    print len(tick_list)
-    ind=[j for j in DF_tick.index if x in DF_tick.ix[j,8]]
-    [1 for j in DF_tick[8] if x in j]
-    tick_indices[x]=ind
+##list of indices corresponding to each ticker symbol
+##(try to redo this with map-reduce)
+#tick_indices={}
+#i=0
+#for x in tick_list:
+#    i+=1
+#    print i
+#    print ' out of '
+#    print len(tick_list)
+#    ind=[j for j in DF_tick.index if x in DF_tick.ix[j,8]]
+#    [1 for j in DF_tick[8] if x in j]
+#    tick_indices[x]=ind
+
+##save the ticker indices to a csv file in the Tweets directory
+#import csv
+#writer = csv.writer(open('tick_indices.csv', 'wb'))
+#for key, value in tick_indices.items():
+#   writer.writerow([key, value])
+
+#print out tweets for AAPL
+AAPL_indices=tick_indices['AAPL']
+for i in AAPL_indices:
+    print DF_tick.ix[i,7]
+##################################################################################################
+##################################################################################################
+##################################################################################################
+#manually setup sentiwordnet
+cd 
+cd /home/sgolbeck/nltk_data/corpora/sentiwordnet
+%run sentiwordnet.py
+swn_filename = "SentiWordNet_3.0.0_20100705.txt"
+swn = SentiWordNetCorpusReader(swn_filename)
+swn.senti_synsets('slow')
+
 
 
 ##################################################################################################
