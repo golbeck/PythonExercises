@@ -58,6 +58,7 @@ tweet_list.sort()
 ##  8: list of stock tickers
 ##  9: time of day hour:min:sec
 ## 10: user id number
+## 11: datetime object of format (year,month,day,hour,minute,second) created below
 #################################################
 ###convert string in DataFrame 'DF' to a list
 #################################################
@@ -88,23 +89,30 @@ for i in range(len(DF)):
 #replace strings in column with a list of lists
 DF[8]=temp_list
 #################################################
+#select tweets from a certain period
+#see https://docs.python.org/2/library/datetime.html#datetime-objects
+#and https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
+from datetime import datetime
+DF_dates=[]
+for i in range(len(DF)):
+    date_object = datetime.strptime(DF.ix[i,1], '%Y-%m-%d')
+    date_object1 = datetime.strptime(DF.ix[i,9], '%H:%M:%S')
+    date_object = date_object.replace(hour=date_object1.hour)
+    date_object = date_object.replace(minute=date_object1.minute)
+    date_object = date_object.replace(second=date_object1.second)
+    DF_dates.append(date_object)
+#create a new column in 'DF' of datetime objects
+DF[11]=DF_dates
+#################################################
 #select only rows that reference a particular ticker symbol
 DF_tick=DF.ix[tick_index,:]
+#reindex the dataframe (uncomment line below)
+#DF_tick.index=range(len(DF_tick))
 #unique list of ticker symbols in tweets
 tick_list=list(set(tick_list))
 #################################################
 #count how many occurences of each ticker symbol
 tick_count={}
-#for x in tick_list:
-#    tick_count[x]=0
-
-for x in tick_list:
-    i=0
-    for j in range(len(DF_tick)):
-        if x in DF_tick.ix[j,8]:
-            i+=1
-    tick_count[x]=i
-    
 for x in tick_list:
     counter=[1 for j in DF_tick[8] if x in j]
     tick_count[x]=sum(counter)
@@ -112,18 +120,93 @@ for x in tick_list:
 #create a dataframe of ticker counts
 DF_tick_count=DataFrame.from_dict(tick_count,orient='index')
 #sort ticker counts
-DF_tick_count=DF_tick_count.sort(columns=0)
+DF_tick_count=DF_tick_count.sort(columns=0,ascending=False)
 #################################################
-#select tweets from a certain period
-#see https://docs.python.org/2/library/datetime.html#datetime-objects
-#and https://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
-from datetime import datetime
-date_object = datetime.strptime(DF.ix[0,1], '%Y-%m-%d')
-date_object1 = datetime.strptime(DF.ix[0,9], '%H:%M:%S')
-date_object = date_object.replace(hour=date_object1.hour)
-date_object = date_object.replace(minute=date_object1.minute)
-date_object = date_object.replace(second=date_object1.second)
+#list of indices corresponding to each ticker symbol
+tick_indices={}
+i=0
+for x in tick_list:
+    i+=1
+    print i
+    print ' out of '
+    print len(tick_list)
+    ind=[j for j in DF_tick.index if x in DF_tick.ix[j,8]]
+    [1 for j in DF_tick[8] if x in j]
+    tick_indices[x]=ind
 
 
+##################################################################################################
+##################################################################################################
+##################################################################################################
+#create a time window for September
+left_window=datetime(2014,9,1,0,0,0)
+right_window=datetime(2014,10,1,0,0,0)
+#test if date_object is in the window
+cond_l=(DF_tick[11]>=left_window)
+cond_r=(DF_tick[11]<right_window)
+cond=[cond_l[i] and cond_r[i] for i in DF_tick.index]
+#select only those rows within the window
+DF_sept=DF_tick[cond]
+#################################################
+#count how many occurences of each ticker symbol
+tick_count_sept={}
+for x in tick_list:
+    counter=[1 for j in DF_sept[8] if x in j]
+    tick_count_sept[x]=sum(counter)
+#################################################
+#create a dataframe of ticker counts
+DF_tick_count_sept=DataFrame.from_dict(tick_count_sept,orient='index')
+#sort ticker counts
+DF_tick_count_sept=DF_tick_count_sept.sort(columns=0,ascending=False)
+
+
+##################################################################################################
+##################################################################################################
+##################################################################################################
+#create a time window for August
+left_window=datetime(2014,8,1,0,0,0)
+right_window=datetime(2014,9,1,0,0,0)
+#test if date_object is in the window
+cond_l=(DF_tick[11]>=left_window)
+cond_r=(DF_tick[11]<right_window)
+cond=[cond_l[i] and cond_r[i] for i in DF_tick.index]
+#select only those rows within the window
+DF_aug=DF_tick[cond]
+#################################################
+#count how many occurences of each ticker symbol
+tick_count_aug={}
+for x in tick_list:
+    counter=[1 for j in DF_aug[8] if x in j]
+    tick_count_aug[x]=sum(counter)
+#################################################
+#create a dataframe of ticker counts
+DF_tick_count_aug=DataFrame.from_dict(tick_count_aug,orient='index')
+#sort ticker counts
+DF_tick_count_aug=DF_tick_count_aug.sort(columns=0,ascending=False)
+
+
+##################################################################################################
+##################################################################################################
+##################################################################################################
+#create a time window for July
+left_window=datetime(2014,7,1,0,0,0)
+right_window=datetime(2014,8,1,0,0,0)
+#test if date_object is in the window
+cond_l=(DF_tick[11]>=left_window)
+cond_r=(DF_tick[11]<right_window)
+cond=[cond_l[i] and cond_r[i] for i in DF_tick.index]
+#select only those rows within the window
+DF_july=DF_tick[cond]
+#################################################
+#count how many occurences of each ticker symbol
+tick_count_july={}
+for x in tick_list:
+    counter=[1 for j in DF_july[8] if x in j]
+    tick_count_july[x]=sum(counter)
+#################################################
+#create a dataframe of ticker counts
+DF_tick_count_july=DataFrame.from_dict(tick_count_july,orient='index')
+#sort ticker counts
+DF_tick_count_july=DF_tick_count_july.sort(columns=0,ascending=False)
 
 
