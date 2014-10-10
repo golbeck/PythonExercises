@@ -38,6 +38,7 @@ for fname in glob.glob(path):
         tab_errors.append(fname)
         continue
 
+#delete the rows associated with tick_indices.csv and any NaN entries (>1)
 DF=DF.dropna(thresh=2)
 DF.index=range(len(DF))
 
@@ -152,10 +153,10 @@ for i in AAPL_indices:
 ##################################################################################################
 ##################################################################################################
 #manually setup sentiwordnet
-cd 
 cd /home/sgolbeck/nltk_data/corpora/sentiwordnet
-%run sentiwordnet.py
-swn_filename = "SentiWordNet_3.0.0_20100705.txt"
+from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
+swn_filename = "SentiWordNet_3.0.0.txt"
+#swn_filename = "SentiWordNet_3.0.0_20100705.txt"
 swn = SentiWordNetCorpusReader(swn_filename)
 swn.senti_synsets('slow')
 

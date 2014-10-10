@@ -145,22 +145,29 @@ DF_tick_count=DF_tick_count.sort(columns=0,ascending=False)
 #for key, value in tick_indices.items():
 #   writer.writerow([key, value])
 
-#print out tweets for AAPL
-AAPL_indices=tick_indices['AAPL']
-for i in AAPL_indices:
-    print DF_tick.ix[i,7]
+#import all of the tweet indices (for each ticker) from the .csv file
+cd /home/sgolbeck/workspace/PythonExercises/twitter/Tweets
+DF_tick_indices=pd.io.parsers.read_table('tick_indices.csv',sep=',',header=None)
+
+#generate the dictionary of tweet indices for each ticker
+tick_indices={}
+for i in range(len(DF_tick_indices)):
+    temp=DF_tick_indices.ix[i,1].split(', ')[1:-1]
+    temp1=[]
+    [temp1.append(int(x)) for x in temp]
+    tick_indices[DF_tick_indices.ix[i,0]]=temp1
+
 ##################################################################################################
 ##################################################################################################
 ##################################################################################################
 #manually setup sentiwordnet
-cd 
 cd /home/sgolbeck/nltk_data/corpora/sentiwordnet
-%run sentiwordnet.py
-swn_filename = "SentiWordNet_3.0.0_20100705.txt"
+from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
+swn_filename = "SentiWordNet_3.0.0.txt"
+#swn_filename = "SentiWordNet_3.0.0_20100705.txt"
 swn = SentiWordNetCorpusReader(swn_filename)
 swn.senti_synsets('slow')
-
-
+cd /home/sgolbeck/workspace/PythonExercises/twitter/Tweets
 
 ##################################################################################################
 ##################################################################################################
@@ -185,6 +192,11 @@ for x in tick_list:
 DF_tick_count_sept=DataFrame.from_dict(tick_count_sept,orient='index')
 #sort ticker counts
 DF_tick_count_sept=DF_tick_count_sept.sort(columns=0,ascending=False)
+#################################################
+#process tweet sent
+x='AAPL'
+tweet_indices=[i for i in DF_sept.index if i in tick_indices[x]]
+temp=DF_sept.ix[tweet_indices[0],7]
 
 
 ##################################################################################################
