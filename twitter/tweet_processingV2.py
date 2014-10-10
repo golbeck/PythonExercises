@@ -38,6 +38,10 @@ for fname in glob.glob(path):
         tab_errors.append(fname)
         continue
 
+#delete the rows associated with tick_indices.csv and any NaN entries (>1)
+DF=DF.dropna(thresh=2)
+DF.index=range(len(DF))
+
 #sort tweet_list
 tweet_list=list(set(tweet_list))
 tweet_list.sort()
