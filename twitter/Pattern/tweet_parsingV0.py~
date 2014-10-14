@@ -27,6 +27,7 @@ text=nltk.word_tokenize("And now for something completely different")
 text_tagged=nltk.pos_tag(text)
 
 
+#######################################################
 def get_wordnet_pos(treebank_tag):
 
     if treebank_tag.startswith('J'):
@@ -42,6 +43,13 @@ def get_wordnet_pos(treebank_tag):
         
         
 DF=pandas.io.parsers.read_table('SentiWordNet_3.0.1.txt',sep='\t',header=26)
-DF.ix[[x for x in range(len(DF)) if DF['SynsetTerms'][x].startswith('bad')==True],:]
+DF.ix[[x for x in range(len(DF)) if DF['SynsetTerms'][x].startswith('bad')==True and DF['POS'][x]=='a'],:]
 
-
+from nltk.corpus import wordnet
+pattern_bad_parse=parse('he is a bad man of crime that dances violently')
+temp=pattern_bad_parse.split()[0]
+for i in range(len(temp)):
+    try:
+        print swn.senti_synsets(temp[i][0],get_wordnet_pos(temp[i][1]))[0]
+    except:
+        print "no entry in sentiwordnet"

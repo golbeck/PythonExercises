@@ -1,5 +1,8 @@
 #######################################################
 cd /home/sgolbeck/nltk_data/corpora/sentiwordnet
+# check if this is in sys.path /usr/local/lib/python2.7/dist-packages/nltk/corpus/reader
+import sys
+print sys.path
 from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
 swn_filename = "SentiWordNet_3.0.0.txt"
 #swn_filename = "SentiWordNet_3.0.0_20100705.txt"
