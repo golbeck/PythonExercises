@@ -36,11 +36,24 @@ for j in range(N):
     tick='$'+tickers[j]
     i = None
     for tweet in t.search(tick, start=i, count=M):
-        temp_text=re.sub('[,;"\'?():_`/\.]','',tweet.text)
+#        temp_text=re.sub('[,;"\'?():_`/\.]','',tweet.text)
+#        temp_text=temp_text.strip()
+        temp_text=tweet.text.strip()
+        temp_text.replace('\n',' ')
         DF0.append({'id':tweet.id,'tickers':tick,'screen_name':tweet.author,'text':temp_text,'time':tweet.date})
-        print tweet.text
-        print
+#        print tweet.text
         i = tweet.id
+
+DF2=DF0
+
+for i in range(len(DF2)):
+#    DF2[i]['text']=DF2[i]['text'].encode('utf-8')
+#    DF2[i]['text'].encode('utf-8')
+    DF2[i]['text'].replace(r"\\",'')
+    DF2[i]['text'].replace('\n','')
+    DF2[i]['text'].strip()
+    DF1=DataFrame(DF2[0:i])
+    DF1.to_csv('DF1.csv',sep=',',header=False,index=True)
 
 DF1=DataFrame(DF0)
 import datetime

@@ -18,7 +18,6 @@ ticklist=ticklist1.merge(ticklist2,how='outer')
 ticklist=ticklist.merge(ticklist3,how='outer')
 tickers1=ticklist[ticklist['MarketCap']>0.0]
 tickers2=list(tickers1['Symbol'])
-#tickers3=[w.lower() for w in tickers2]
 tickers3=[re.sub(r'\s','',w) for w in tickers2]
 tickers=list(set(tickers3))
 ##############################################################################################
@@ -37,16 +36,19 @@ for j in range(N):
     tick='$'+tickers[j]
     i = None
     for tweet in t.search(tick, start=i, count=M):
-        DF0.append({'id':tweet.id,'tickers':tick,'screen_name':tweet.author,'text':tweet.text,'time':tweet.date})
-        print tweet.text
-        print
+        temp_text=re.sub('[,;"\'?():_`/\.]','',tweet.text)
+        DF0.append({'id':tweet.id,'tickers':tick,'screen_name':tweet.author,'text':temp_text,'time':tweet.date})
+#        print tweet.text
         i = tweet.id
 
 DF1=DataFrame(DF0)
 import datetime
-clk=datetime.datetime.now().strftime('%Y-%m-%d')
-str_csv='Tweets'+'clk'+'.csv'
+clk=datetime.datetime.now().strftime('%Y_%m_%d')
+str_csv='Tweets_'+clk+'.csv'
 DF1.to_csv(str_csv,sep=',',header=False,index=True)
+
+for i in range(len(DF1)):
+    print DF1.ix[i,'text'].encode('utf-8')
 ##############################################################################################
 ##############################################################################################
 ##############################################################################################
