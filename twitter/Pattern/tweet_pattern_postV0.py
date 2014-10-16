@@ -19,7 +19,10 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
 #import all of the tweets from the .csv files
 import os
 pwd_temp=%pwd
+#work computer directory
 dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
+#home computer directory
+dir1='/home/golbeck/workspace/PythonExercises/twitter/Tweets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 
