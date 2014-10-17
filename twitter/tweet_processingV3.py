@@ -227,6 +227,8 @@ for i in range(len(tweet_test_str)):
 #######################################################
 
 def get_sentiment(tweet_text,i):
+    #input: list of tokens and an integer indicating an element of the list
+    #output: tuple of (pos sentiment,neg sentiment)
     try:
         sent_out=swn.senti_synsets(tweet_text[0][i][0],get_wordnet_pos(tweet_text[0][i][1]))[0]
         swn_score=(sent_out.pos_score(),sent_out.neg_score())
@@ -237,13 +239,21 @@ def get_sentiment(tweet_text,i):
 #######################################################
 
 def swn_sentiment(token_list):
+    #input: a list of tokens
+    #output: list of [pos sentiment,neg sentiment]
+    #uses sentiwordnet, requires parse from pattern
     N=len(token_list)
     tweet_text = " ".join(token_list)
     tweet_text=parse(tweet_text).split()
-    tweet_sent_list=[get_sentiment(tweet_text,i) for i in range(N)]
-    
+    sentiment_list=[get_sentiment(tweet_text,i) for i in range(N)]
+    senti_out=[sum([sentiment_list[x][i] for x in range(len(sentiment_list))]) for i in range(2)]
+    return senti_out
     
 
+#######################################################
+senti_list=[]
+senti_list=[swn_sentiment(DF_tick.ix[i,7]) for i in DF_tick.index]
+DF_tick[12]=senti_list
 
 
 
