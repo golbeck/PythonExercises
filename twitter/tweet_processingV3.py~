@@ -175,15 +175,6 @@ pattern_bad_parse=pattern_bad_parse.split()
 print pattern_bad_parse
 pattern_bad_parse_word=pattern_bad_parse[0][3]
 
-#test on an actual tweet in the DataFrame
-tweet_text_list=DF.ix[0,7]
-tweet_test_str = " ".join(tweet_text_list)
-tweet_test_str=parse('he is a bad man of crime that dances violently').split()
-for i in range(len(tweet_test_str)):
-    try:
-        print swn.senti_synsets(tweet_test_str[i][0],get_wordnet_pos(tweet_test_str[i][1]))[0]
-    except:
-        print "no entry in sentiwordnet"
         
 #######################################################
 import nltk
@@ -219,3 +210,45 @@ for i in range(len(temp)):
         print swn.senti_synsets(temp[i][0],get_wordnet_pos(temp[i][1]))[0]
     except:
         print "no entry in sentiwordnet"
+
+#test on an actual tweet in the DataFrame
+tweet_text_list=DF.ix[0,7]
+tweet_test_str = " ".join(tweet_text_list)
+tweet_test_str = tweet_test_str.replace('$','TICKSYMBOL_')
+tweet_test_str = tweet_test_str.replace('#','')
+tweet_test_str=parse(tweet_test_str).split()
+for i in range(len(tweet_test_str)):
+    try:
+        print swn.senti_synsets(tweet_test_str[i][0],get_wordnet_pos(tweet_test_str[i][1]))[0]
+    except:
+        print "no entry in sentiwordnet"
+
+def get_sentiment(tweet_text,i):
+    try:
+        sent_out=swn.senti_synsets(tweet_text[0][i][0],get_wordnet_pos(tweet_text[0][i][1]))[0]
+        swn_score=(sent_out.pos_score(),sent_out.neg_score())
+    except:
+        swn_score=(0.0,0.0)
+        
+    return swn_score
+
+def swn_sentiment(token_list):
+    N=len(token_list)
+    tweet_text = " ".join(token_list)
+    tweet_text=parse(tweet_text).split()
+    tweet_sent_list=[get_sentiment(tweet_text,i) for i in range(N)]
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
