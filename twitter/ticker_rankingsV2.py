@@ -1,0 +1,21 @@
+DF_dict={}
+#twitter times are reported in GMT
+#convert to GMT-5 for EST (NYSE)
+#that is, if you want 8am EST, enter 1pm in the datetime object
+#NYSE opens at 9:30am, closes at 4:00pm
+
+#create a time window for August
+left_window=[datetime(2014,7,28,14,30,0),datetime(2014,8,4,14,30,0),datetime(2014,8,11,14,30,0),
+datetime(2014,8,18,14,30,0),datetime(2014,8,25,14,30,0)]
+right_window=[datetime(2014,8,3,14,29,59),datetime(2014,8,10,14,29,59),datetime(2014,8,17,14,29,59),
+datetime(2014,8,24,14,29,59),datetime(2014,9,1,14,29,59)]
+
+#test if date_object is in the window
+m=len(left_window)
+for j in range(m):
+    cond_l=(DF_tick[11]>=left_window[j])
+    cond_r=(DF_tick[11]<right_window[j])
+    cond=[cond_l[i] and cond_r[i] for i in DF_tick.index]
+    #select only those rows within the window
+    DF_dict[j]=DF_tick[cond]
+
