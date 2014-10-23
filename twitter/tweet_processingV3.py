@@ -31,7 +31,7 @@ tweet_list=[]
 tab_errors=[]
 path = "*.csv"
 DF=DataFrame()
-for fname in glob.glob(path):
+for fname in sorted(glob.glob(path)):
     temp_text=nltk.regexp_tokenize(fname, pattern)
     name_temp=temp_text[0]
     tweet_list.append(name_temp.lower())
@@ -149,8 +149,8 @@ for x in tick_list:
 #save the ticker indices to a csv file in the Tweets directory
 import csv
 writer = csv.writer(open('tick_indices.csv', 'wb'))
-for key, value in tick_indices.items():
-   writer.writerow([key, value])
+for key in tick_indices.keys():
+    writer.writerow([key, tick_indices[key]])
 
 
 #import all of the tweet indices (for each ticker) from the .csv file
