@@ -1,4 +1,52 @@
 #dependency: tweet_processingV3.py
+################################################################################################
+################################################################################################
+#process text for sentiments scores
+################################################################################################
+################################################################################################
+#import sentiwordnet
+try:
+    from nltk.corpus import sentiwordnet as swn
+except:
+    import sys
+    #work computer directory
+#    dir1='/home/sgolbeck/nltk_data/corpora/sentiwordnet'
+    #home computer directory
+    dir1='/home/golbeck/nltk_data/corpora/sentiwordnet'
+    sys.path.append(dir1)
+    print sys.path
+    from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
+    #file that contains the polarity and objectivity scores
+    swn_filename = dir1+"/SentiWordNet_3.0.0.txt"
+    #swn_filename = "SentiWordNet_3.0.0_20100705.txt"
+    swn = SentiWordNetCorpusReader(swn_filename)
+    
+#test if sentiwordnet has been imported
+swn_bad=swn.senti_synsets('bad')
+
+#######################################################
+#to use the below, copy the SentiWordNet*.txt file into pattern/en/wordnet
+from pattern.en import wordnet
+#EXAMPLE: 
+print wordnet.synsets("kill",pos="VB")[0].weight
+from pattern.en import ADJECTIVE
+#EXAMPLE: 
+pattern_bad=wordnet.synsets('bad', ADJECTIVE)[0]
+#######################################################
+from pattern.en import parse
+#EXAMPLE: 
+pattern_bad_parse=parse('he is a bad man of crime that dances violently')
+pattern_bad_parse=pattern_bad_parse.split()
+print pattern_bad_parse
+pattern_bad_parse_word=pattern_bad_parse[0][3]
+
+        
+#######################################################
+import nltk
+#EXAMPLE: 
+text=nltk.word_tokenize("And now for something completely different")
+#requires that 'maxent_treebank_pos_tagger' and 'punkt' has been downloaded
+text_tagged=nltk.pos_tag(text)
 ##############################################################################################################
 ##############################################################################################################
 ##############################################################################################################

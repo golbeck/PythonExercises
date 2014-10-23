@@ -10,9 +10,9 @@ try:
 except:
     import sys
     #work computer directory
-    dir1='/home/sgolbeck/nltk_data/corpora/sentiwordnet'
+#    dir1='/home/sgolbeck/nltk_data/corpora/sentiwordnet'
     #home computer directory
-#    dir1='/home/golbeck/nltk_data/corpora/sentiwordnet'
+    dir1='/home/golbeck/nltk_data/corpora/sentiwordnet'
     sys.path.append(dir1)
     print sys.path
     from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
@@ -76,7 +76,9 @@ def get_sentiment(tweet_text,i):
         sent_out=swn.senti_synsets(tweet_text[0][i][0],get_wordnet_pos(tweet_text[0][i][1]))
         if len(sent_out)>0:
             sent_out=sent_out[0]
-            swn_score=(sent_out.pos_score,sent_out.neg_score)
+            #change to pos_score() and neg_score() if on home computer
+            #else, pos_score and neg_score if on work computer
+            swn_score=(sent_out.pos_score(),sent_out.neg_score())
         else:
             swn_score=(0.0,0.0)
     except:

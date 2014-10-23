@@ -20,9 +20,9 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
 import os
 pwd_temp=%pwd
 #work computer directory
-dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
+#dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
 #home computer directory
-#dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
+dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 
@@ -131,12 +131,33 @@ for x in tick_list:
 DF_tick_count=DataFrame.from_dict(tick_count,orient='index')
 #sort ticker counts
 DF_tick_count=DF_tick_count.sort(columns=0,ascending=False)
-#import all of the tweet indices (for each ticker) from the .csv file
 
+#################################################
+##list of indices corresponding to each ticker symbol
+##(try to redo this with map-reduce)
+tick_indices={}
+i=0
+for x in tick_list:
+    i+=1
+    print i
+    print ' out of '
+    print len(tick_list)
+    ind=[j for j in DF_tick.index if x in DF_tick.ix[j,8]]
+    [1 for j in DF_tick[8] if x in j]
+    tick_indices[x]=ind
+
+#save the ticker indices to a csv file in the Tweets directory
+import csv
+writer = csv.writer(open('tick_indices.csv', 'wb'))
+for key, value in tick_indices.items():
+   writer.writerow([key, value])
+
+
+#import all of the tweet indices (for each ticker) from the .csv file
 #work computer directory
-dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
+#dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
 #home computer directory
-#dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
+dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 DF_tick_indices=pd.io.parsers.read_table('tick_indices.csv',sep=',',header=None)
