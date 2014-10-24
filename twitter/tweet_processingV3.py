@@ -20,9 +20,9 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
 import os
 pwd_temp=%pwd
 #work computer directory
-#dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
+dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
 #home computer directory
-dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
+#dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 
@@ -155,9 +155,9 @@ DF_tick_count=DF_tick_count.sort(columns=0,ascending=False)
 
 #import all of the tweet indices (for each ticker) from the .csv file
 #work computer directory
-#dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
+dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Tweets'
 #home computer directory
-dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
+#dir1='/home/golbeck/Workspace/PythonExercises/twitter/Tweets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 DF_tick_indices=pd.io.parsers.read_table('tick_indices.csv',sep=',',header=None)
