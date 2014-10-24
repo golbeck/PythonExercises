@@ -135,22 +135,22 @@ DF_tick_count=DF_tick_count.sort(columns=0,ascending=False)
 #################################################
 ##list of indices corresponding to each ticker symbol
 ##(try to redo this with map-reduce)
-tick_indices={}
-i=0
-for x in tick_list:
-    i+=1
-    print i
-    print ' out of '
-    print len(tick_list)
-    ind=[j for j in DF_tick.index if x in DF_tick.ix[j,8]]
-    [1 for j in DF_tick[8] if x in j]
-    tick_indices[x]=ind
+#tick_indices={}
+#i=0
+#for x in tick_list:
+#    i+=1
+#    print i
+#    print ' out of '
+#    print len(tick_list)
+#    ind=[j for j in DF_tick.index if x in DF_tick.ix[j,8]]
+#    [1 for j in DF_tick[8] if x in j]
+#    tick_indices[x]=ind
 
-#save the ticker indices to a csv file in the Tweets directory
-import csv
-writer = csv.writer(open('tick_indices.csv', 'wb'))
-for key in tick_indices.keys():
-    writer.writerow([key, tick_indices[key]])
+##save the ticker indices to a csv file in the Tweets directory
+#import csv
+#writer = csv.writer(open('tick_indices.csv', 'wb'))
+#for key in tick_indices.keys():
+#    writer.writerow([key, tick_indices[key]])
 
 
 #import all of the tweet indices (for each ticker) from the .csv file
