@@ -33,6 +33,10 @@ req.sign_request(signature_method, consumer, token)
 
 ###########################################################################################################
 ###########################################################################################################
+#see https://developer.linkedin.com/documents/getting-oauth-token-python
+#see https://github.com/simplegeo/python-oauth2
+#see http://stocktwits.com/developers/docs/authentication#responses
+#see http://stocktwits.com/developers/docs/api#oauth-token-docs
 import oauth2 as oauth
 
 consumer_key = "e6ea615fc3943c04"

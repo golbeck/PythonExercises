@@ -38,6 +38,11 @@ req.sign_request(signature_method, consumer, token)
 #see http://stocktwits.com/developers/docs/authentication#responses
 #see http://stocktwits.com/developers/docs/api#oauth-token-docs
 import oauth2 as oauth
+import urlparse 
+
+curl -X POST https://api.stocktwits.com/api/2/oauth/token -d 'client_id=e6ea615fc3943c04&client_secret=cd49fc9a46fa1938c11ca8b45d157aabd7c6e067&code=<code>&grant_type=authorization_code&redirect_uri=http://www.example.com'
+
+curl -X GET https://api.stocktwits.com/api/2/oauth/authorize -d 'client_id=e6ea615fc3943c04&response_type=code&redirect_uri=http://www.stocktwits.com&scope=read,watch_lists,publish_messages,publish_watch_lists,follow_users,follow_stocks'
 
 consumer_key = "e6ea615fc3943c04"
 consumer_secret = "cd49fc9a46fa1938c11ca8b45d157aabd7c6e067"
@@ -45,8 +50,8 @@ consumer_secret = "cd49fc9a46fa1938c11ca8b45d157aabd7c6e067"
 consumer = oauth.Consumer(key=consumer_key,secret=consumer_secret)
 
 # Request token URL for Twitter.
-request_token_url = "https://api.stocktwits.com/api/2/oauth/token"
-
+#request_token_url = "https://api.stocktwits.com/api/2/oauth/token"
+request_token_url = "https://api.stocktwits.com/api/2/oauth/authorize"
 
 # Create our client.
 client = oauth.Client(consumer)
