@@ -27,7 +27,7 @@ from pattern.web import Twitter
 #number of tickers to search
 N=len(tickers)
 #number of tweets to download
-M=10
+M=2000
 #Dataframe
 DF0=[]
 #loop

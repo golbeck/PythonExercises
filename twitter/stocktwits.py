@@ -1,61 +1,86 @@
-import oauth2 as oauth
-import time
-
-# Set the API endpoint 
-url = "http://example.com/photos"
-
-# Set the base oauth_* parameters along with any other parameters required
-# for the API call.
-params = {
-    'oauth_version': "1.0",
-    'oauth_nonce': oauth.generate_nonce(),
-    'oauth_timestamp': int(time.time())
-    'user': 'joestump',
-    'photoid': 555555555555
-}
-
-# Set up instances of our Token and Consumer. The Consumer.key and 
-# Consumer.secret are given to you by the API provider. The Token.key and
-# Token.secret is given to you after a three-legged authentication.
-token = oauth.Token(key="tok-test-key", secret="tok-test-secret")
-consumer = oauth.Consumer(key="con-test-key", secret="con-test-secret")
-
-# Set our token/key parameters
-params['oauth_token'] = token.key
-params['oauth_consumer_key'] = consumer.key
-
-# Create our request. Change method, etc. accordingly.
-req = oauth.Request(method="GET", url=url, parameters=params)
-
-# Sign the request.
-signature_method = oauth.SignatureMethod_HMAC_SHA1()
-req.sign_request(signature_method, consumer, token)
-
+###########################################################################################################
+###########################################################################################################
+#generate token (it is passed in the resulting url)
+https://api.stocktwits.com/api/2/oauth/authorize?client_id=e6ea615fc3943c04&response_type=token&redirect_uri=http://www.stocktwits.com&scope=read,watch_lists,publish_messages,publish_watch_lists,follow_users,follow_stocks
 ###########################################################################################################
 ###########################################################################################################
 #see https://developer.linkedin.com/documents/getting-oauth-token-python
 #see https://github.com/simplegeo/python-oauth2
 #see http://stocktwits.com/developers/docs/authentication#responses
 #see http://stocktwits.com/developers/docs/api#oauth-token-docs
+#tools for accessing the API
 import oauth2 as oauth
+import urllib2 as urllib
+#tweets are output in JSON format. Use this package to load the data into python
+import json
 
 consumer_key = "e6ea615fc3943c04"
 consumer_secret = "cd49fc9a46fa1938c11ca8b45d157aabd7c6e067"
+access_token='7d12b1c80b938756360078a3cfbd1651acd8b302'
 # Create your consumer with the proper key/secret.
-consumer = oauth.Consumer(key=consumer_key,secret=consumer_secret)
-
-# Request token URL for Twitter.
-request_token_url = "https://api.stocktwits.com/api/2/oauth/token"
+oauth_consumer = oauth.Consumer(key=consumer_key,secret=consumer_secret)
 
 
 # Create our client.
-client = oauth.Client(consumer)
-
+client = oauth.Client(oauth_consumer)
+url='https://api.stocktwits.com/api/2/streams/suggested.json?access_token='
+#download the maximum number of tweets
+url=url+access_token
 # The OAuth Client request works just like httplib2 for the most part.
-resp, content = client.request(request_token_url, "POST")
+resp, content = client.request(url, "GET")
 print resp
 print content
 if resp['status'] != '200':
     raise Exception("Invalid response %s." % resp['status'])
- 
-request_token = dict(urlparse.parse_qsl(content))
+
+response=json.loads(content)
+keys_=response.keys()
+dict_cursor=response['cursor']
+max_id=dict_cursor['max']-1
+min_id=dict_cursor['since']
+messages=response['messages']
+###########################################################################################################
+###########################################################################################################
+def stocktwits_request(max_id):
+    #max_id: id larger than any message you want to obtain (enter '' if you want the latest messages)
+
+    consumer_key = "e6ea615fc3943c04"
+    consumer_secret = "cd49fc9a46fa1938c11ca8b45d157aabd7c6e067"
+    access_token='7d12b1c80b938756360078a3cfbd1651acd8b302'
+    # Create your consumer with the proper key/secret.
+    oauth_consumer = oauth.Consumer(key=consumer_key,secret=consumer_secret)
+
+    # Create our client.
+    client = oauth.Client(oauth_consumer)
+    url='https://api.stocktwits.com/api/2/streams/suggested.json?access_token='
+    #download the maximum number of tweets
+    url=url+access_token
+    url=url+'&max='+max_id
+    # The OAuth Client request works just like httplib2 for the most part.
+    try:
+        resp, content = client.request(url, "GET")
+        response=json.loads(content)
+    except:
+        print "request failed"
+        response={}
+        resp={}
+        resp['x-ratelimit-remaining']=0
+    return {'content':response,'limit':resp['x-ratelimit-remaining']}
+
+
+limit=400
+M=400
+message=[]
+max_id=''
+while limit>M:
+    dict1=stocktwits_request(max_id)
+    response=dict1['content']
+    max_id=response['cursor']['max']-1
+    max_id=str(max_id)
+    message=response['messages']
+    [messages.append(x) for x in message]
+    limit=int(dict1['limit'])
+    print limit
+
+
+

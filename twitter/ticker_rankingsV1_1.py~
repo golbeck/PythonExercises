@@ -69,6 +69,24 @@ DF_sent_neg_aug=DataFrame.from_dict(sent_neg_aug,orient='index')
 DF_sent_pos_aug=DF_sent_pos_aug.sort(columns=0,ascending=False)
 DF_sent_neg_aug=DF_sent_neg_aug.sort(columns=0,ascending=False)
 
+#rename columns
+DF_sent_neg_aug.columns=['MEAN','MED','STD','COUNT']
+DF_sent_pos_aug.columns=['MEAN','MED','STD','COUNT']
+
+#compute monthly returns
+left_window=datetime(2014,9,1)
+right_window=datetime(2014,10,1)
+ret=[]
+import pandas.io.data
+for name in DF_sent_pos_aug.index:
+    df_yahoo = pd.io.data.get_data_yahoo(name,start=left_window,end=right_window)
+    N=len(df_yahoo)
+    ret.append(df_yahoo.ix[N-1,'Adj Close']/df_yahoo.ix[0,'Open']-1)
+
+#add monthly returns to sentiment dataframes
+DF_sent_pos_aug['RET']=ret
+ret1=[DF_sent_pos_aug.ix[x,'RET'] for x in DF_sent_neg_aug.index]
+DF_sent_neg_aug['RET']=ret1
 
 
 

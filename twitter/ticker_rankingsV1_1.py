@@ -21,23 +21,23 @@ cond_r=(DF_unique[11]<right_window)
 cond=[cond_l[i] and cond_r[i] for i in DF_unique.index]
 #select only those rows within the window
 DF_aug=DF_unique[cond]
-#################################################
+##################################################################################################
 #count how many occurences of each ticker symbol
 tick_count_aug={}
 for x in tick_list:
     counter=[1 for j in DF_aug[8] if x in j]
     tick_count_aug[x]=sum(counter)
-#################################################
+##################################################################################################
 #create a dataframe of ticker counts
 DF_tick_count_aug=DataFrame.from_dict(tick_count_aug,orient='index')
 #sort ticker counts
 DF_tick_count_aug=DF_tick_count_aug.sort(columns=0,ascending=False)
-#################################################
+##################################################################################################
 #EXAMPLE: process tweet sent
 x='AAPL'
 tweet_indices=[i for i in DF_aug.index if i in tick_indices[x]]
 temp=DF_aug.ix[tweet_indices]
-#################################################
+##################################################################################################
 #determine summary statistics for pos and neg sentiment for each ticker
 #restrict dataframe to only tickers with at least m tweets
 m=20
@@ -60,8 +60,8 @@ for x in DF_tick_count_aug_m.index:
         sent_pos.append(DF_aug.ix[i,12][0])
         sent_neg.append(DF_aug.ix[i,12][1])
     #save the summary statistics for the ticker in the dictionaries
-    sent_pos_aug[x]=[np.mean(sent_pos),np.median(sent_pos),np.std(sent_pos),len(sent_pos)]
-    sent_neg_aug[x]=[np.mean(sent_neg),np.median(sent_neg),np.std(sent_neg),len(sent_neg)]
+    sent_pos_aug[x]=[np.mean(sent_pos),np.median(sent_pos),np.std(sent_pos),len(sent_pos),x_indices]
+    sent_neg_aug[x]=[np.mean(sent_neg),np.median(sent_neg),np.std(sent_neg),len(sent_neg),x_indices]
 #convert dictionaries to DataFrame
 DF_sent_pos_aug=DataFrame.from_dict(sent_pos_aug,orient='index')
 DF_sent_neg_aug=DataFrame.from_dict(sent_neg_aug,orient='index')
@@ -70,8 +70,8 @@ DF_sent_pos_aug=DF_sent_pos_aug.sort(columns=0,ascending=False)
 DF_sent_neg_aug=DF_sent_neg_aug.sort(columns=0,ascending=False)
 
 #rename columns
-DF_sent_neg_aug.columns=['MEAN','MED','STD','COUNT']
-DF_sent_pos_aug.columns=['MEAN','MED','STD','COUNT']
+DF_sent_neg_aug.columns=['MEAN','MED','STD','COUNT','INDICES']
+DF_sent_pos_aug.columns=['MEAN','MED','STD','COUNT','INDICES']
 
 #compute monthly returns
 left_window=datetime(2014,9,1)
@@ -88,6 +88,8 @@ DF_sent_pos_aug['RET']=ret
 ret1=[DF_sent_pos_aug.ix[x,'RET'] for x in DF_sent_neg_aug.index]
 DF_sent_neg_aug['RET']=ret1
 
-
+#print out tweets and sentiment scores for a selected ticker
+for i in DF_sent_pos_aug.ix['KING','INDICES']:
+    print DF_aug.ix[i,12], DF_aug.ix[i,7]
 
 

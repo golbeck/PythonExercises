@@ -18,7 +18,8 @@ except:
     from sentiwordnet import SentiWordNetCorpusReader, SentiSynset
     #file that contains the polarity and objectivity scores
     swn_filename = dir1+"/SentiWordNet_3.0.0.txt"
-    #swn_filename = "SentiWordNet_3.0.0_20100705.txt"
+    swn_filename = dir1+"/SentiWordNet_3.0.0_20100705.txt"
+    swn_filename = dir1+"/SentiWordNet_3.0.1.txt"
     swn = SentiWordNetCorpusReader(swn_filename)
     
 #test if sentiwordnet has been imported
