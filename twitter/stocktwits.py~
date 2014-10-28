@@ -1,50 +1,28 @@
 ###########################################################################################################
 ###########################################################################################################
-<<<<<<< HEAD
-#generate token (it is passed in the resulting url)
-https://api.stocktwits.com/api/2/oauth/authorize?client_id=e6ea615fc3943c04&response_type=token&redirect_uri=http://www.stocktwits.com&scope=read,watch_lists,publish_messages,publish_watch_lists,follow_users,follow_stocks
+#generate token by loading below URL in browser (it is passed in the resulting url)
+#https://api.stocktwits.com/api/2/oauth/authorize?client_id=e6ea615fc3943c04&response_type=token&redirect_uri=http://www.stocktwits.com&scope=read,watch_lists,publish_messages,publish_watch_lists,follow_users,follow_stocks
 ###########################################################################################################
 ###########################################################################################################
-=======
->>>>>>> 108031d34579cf5065218ff827933907f4c28446
-#see https://developer.linkedin.com/documents/getting-oauth-token-python
-#see https://github.com/simplegeo/python-oauth2
-#see http://stocktwits.com/developers/docs/authentication#responses
-#see http://stocktwits.com/developers/docs/api#oauth-token-docs
-<<<<<<< HEAD
 #tools for accessing the API
-=======
->>>>>>> 108031d34579cf5065218ff827933907f4c28446
 import oauth2 as oauth
-import urllib2 as urllib
 #tweets are output in JSON format. Use this package to load the data into python
 import json
-
-consumer_key = "e6ea615fc3943c04"
-consumer_secret = "cd49fc9a46fa1938c11ca8b45d157aabd7c6e067"
-access_token='7d12b1c80b938756360078a3cfbd1651acd8b302'
-# Create your consumer with the proper key/secret.
-oauth_consumer = oauth.Consumer(key=consumer_key,secret=consumer_secret)
-
-
-# Create our client.
-client = oauth.Client(oauth_consumer)
-url='https://api.stocktwits.com/api/2/streams/suggested.json?access_token='
-#download the maximum number of tweets
-url=url+access_token
-# The OAuth Client request works just like httplib2 for the most part.
-resp, content = client.request(url, "GET")
-print resp
-print content
-if resp['status'] != '200':
-    raise Exception("Invalid response %s." % resp['status'])
-
-response=json.loads(content)
-keys_=response.keys()
-dict_cursor=response['cursor']
-max_id=dict_cursor['max']-1
-min_id=dict_cursor['since']
-messages=response['messages']
+#save output to dataframe and then to csv
+import pandas as pd
+###########################################################################################################
+###########################################################################################################
+def format_date(a,b,c):
+    #converts date to standard form
+    #a: month as string
+    #b: day of month as string
+    #c: year as string
+    months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    temp=months.index(a)+1
+    if temp<10:
+        temp='0'+str(temp)
+    date_out=c+'-'+str(temp)+'-'+b
+    return date_out
 ###########################################################################################################
 ###########################################################################################################
 def stocktwits_request(max_id):
@@ -61,8 +39,9 @@ def stocktwits_request(max_id):
     url='https://api.stocktwits.com/api/2/streams/suggested.json?access_token='
     #download the maximum number of tweets
     url=url+access_token
+    #query by max_id
     url=url+'&max='+max_id
-    # The OAuth Client request works just like httplib2 for the most part.
+    # OAuth Client request
     try:
         resp, content = client.request(url, "GET")
         response=json.loads(content)
@@ -72,11 +51,11 @@ def stocktwits_request(max_id):
         resp={}
         resp['x-ratelimit-remaining']=0
     return {'content':response,'limit':resp['x-ratelimit-remaining']}
-
-
+###########################################################################################################
+###########################################################################################################
 limit=400
-M=400
-message=[]
+M=0
+messages=[]
 max_id=''
 while limit>M:
     dict1=stocktwits_request(max_id)
@@ -86,7 +65,42 @@ while limit>M:
     message=response['messages']
     [messages.append(x) for x in message]
     limit=int(dict1['limit'])
-    print limit
+    print limit, max_id, len(messages)
+###########################################################################################################
+###########################################################################################################
+N=len(messages)
+text=[messages[i]['body'] for i in range(N)]
+created_at=[messages[i]['created_at'] for i in range(N)]
+symbol=[messages[i]['symbols'][0]['symbol'] for i in range(N)]
+classification=[messages[i]['user']['classification'] for i in range(N)]
+followers=[messages[i]['user']['followers'] for i in range(N)]
+id_=[messages[i]['user']['id'] for i in range(N)]
+trading_strategy=[messages[i]['user']['trading_strategy']['approach'] for i in range(N)]
+assets_frequently_traded=[messages[i]['user']['trading_strategy']['assets_frequently_traded'] for i in range(N)]
+experience=[messages[i]['user']['trading_strategy']['experience'] for i in range(N)]
+holding_period=[messages[i]['user']['trading_strategy']['holding_period'] for i in range(N)]
+username=[messages[i]['user']['username'] for i in range(N)]
+
+#generate date, time of day, day of week
+for i in range(N):
+    temp1=messages[i]['created_at'].encode('utf8').split()
+    'day_week':temp1[0]
+    'date':format_date(temp1[1],temp1[2],temp1[5])
+    'time':temp1[3]
+###########################################################################################################
+###########################################################################################################
+DF_stocktwits=pd.DataFrame()
+DF_stocktwits['text']=text
+DF_stocktwits['created_at']=created_at
+DF_stocktwits['symbol']=symbol
+DF_stocktwits['classification']=classification
+DF_stocktwits['followers']=followers
+DF_stocktwits['id']=id_
+DF_stocktwits['strategy']=trading_strategy
+DF_stocktwits['assets_traded']=assets_frequently_traded
+DF_stocktwits['experience']=experience
+DF_stocktwits['holding_per']=holding_period
+DF_stocktwits['username']=username
 
 
 
