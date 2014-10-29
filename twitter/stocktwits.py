@@ -32,7 +32,7 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     '''
 ###########################################################################################################
 ###########################################################################################################
-def stocktwits_request(max_id):
+def stocktwits_request(max_id,since_id):
     #max_id: id larger than any message you want to obtain (enter '' if you want the latest messages)
 
     consumer_key = "e6ea615fc3943c04"
@@ -46,8 +46,12 @@ def stocktwits_request(max_id):
     url='https://api.stocktwits.com/api/2/streams/suggested.json?access_token='
     #download the maximum number of tweets
     url=url+access_token
-    #query by max_id
-    url=url+'&max='+max_id
+    if len(max_id)>0:
+        #query by max_id
+        url=url+'&max='+max_id
+    if len(since_id)>0:
+        #query by max_id
+        url=url+'&since='+since_id
     # OAuth Client request
     try:
         resp, content = client.request(url, "GET")
@@ -77,20 +81,48 @@ def text_processing(text):
     return temp_text
 ###########################################################################################################
 ###########################################################################################################
+def adjust_time(temp):
+    #temp=messages[i]['created_at'].encode('utf8')
+
+    #twitter times are reported in GMT
+    #convert to GMT-5 for EST (NYSE)
+    #that is, if you want 8am EST, enter 1pm in the datetime object
+    #NYSE opens at 9:30am, closes at 4:00pm
+
+    t_int=int(temp[11:13])-5
+    if t_int<0:
+        t_int=24+t_int
+
+    t_int=str(t_int)
+
+    if int(t_int)<10:
+        t_int='0'+str(t_int)
+
+    t_string=t_int+temp[13:19]
+    return t_string
+###########################################################################################################
+###########################################################################################################
+max_id=''
+since_id=''
 limit=400
 M=0
+M_temp=999
 messages=[]
-max_id=''
-while limit>M:
-    dict1=stocktwits_request(max_id)
+#download messages as far back as allowed
+while limit>M and M_temp>0:
+    dict1=stocktwits_request(max_id,since_id)
     response=dict1['content']
     max_id=response['cursor']['max']-1
     max_id=str(max_id)
-    since_id=response['cursor']['since']
+    since_id=str(response['cursor']['since'])
     message=response['messages']
-    [messages.append(x) for x in message]
-    limit=int(dict1['limit'])
-    print limit, max_id, since_id, len(messages)
+    #check if query returned an empty list; if yes, then stop
+    M_temp=len(message)
+    if M_temp>0:
+        [messages.append(x) for x in message]
+        limit=int(dict1['limit'])
+        print limit, max_id, since_id, len(messages)
+        print response['messages'][0]['id'], response['messages'][-1]['id']
 ###########################################################################################################
 ###########################################################################################################
 N=len(messages)
@@ -109,17 +141,15 @@ username=[messages[i]['user']['username'] for i in range(N)]
 
 
 #generate date, time of day, day of week
-day_week=[messages[i]['created_at'].encode('utf8')[10] for i in range(N)]
 date_=[messages[i]['created_at'].encode('utf8')[0:10] for i in range(N)]
-time_=[messages[i]['created_at'].encode('utf8')[11:19] for i in range(N)]
-tz_=[messages[i]['created_at'].encode('utf8')[19] for i in range(N)]
+time_=[adjust_time(messages[i]['created_at'].encode('utf8')) for i in range(N)]
+tz_=['EST' for i in range(N)]
 
 
 ###########################################################################################################
 ###########################################################################################################
 DF_stocktwits=pd.DataFrame()
 DF_stocktwits['text']=text
-DF_stocktwits['day']=day_week
 DF_stocktwits['date']=date_
 DF_stocktwits['time']=time_
 DF_stocktwits['tz']=tz_
@@ -136,10 +166,11 @@ DF_stocktwits['username']=username
 
 ###########################################################################################################
 ###########################################################################################################
+import datetime
 current_time=datetime.datetime.now()
 hr=str(current_time.hour)
 mn=str(current_time.minute)
 current_time=str(hr+'_'+mn)
-str_csv='Stocktwits/'+date_[-1]+'_'+current_time+'PST'+'.csv'
+str_csv='Stocktwits/'+date_[0]+'_'+current_time+'PST'+'.csv'
 DF_stocktwits.to_csv(str_csv,sep=',',header=True,index=True)
 
