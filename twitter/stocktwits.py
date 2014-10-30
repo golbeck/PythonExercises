@@ -168,9 +168,12 @@ DF_stocktwits['username']=username
 ###########################################################################################################
 import datetime
 current_time=datetime.datetime.now()
+year=str(current_time.year)
+month=str(current_time.month)
+day=str(current_time.day)
 hr=str(current_time.hour)
 mn=str(current_time.minute)
-current_time=str(hr+'_'+mn)
-str_csv='Stocktwits/'+date_[0]+'_'+current_time+'PST'+'.csv'
+current_time=str(year+'-'+month+'-'+day+'-'+hr+'-'+mn)
+str_csv='Stocktwits/'+current_time+'PST'+'.csv'
 DF_stocktwits.to_csv(str_csv,sep=',',header=True,index=True)
 

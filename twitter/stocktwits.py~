@@ -32,7 +32,7 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     '''
 ###########################################################################################################
 ###########################################################################################################
-def stocktwits_request(max_id):
+def stocktwits_request(max_id,since_id):
     #max_id: id larger than any message you want to obtain (enter '' if you want the latest messages)
 
     consumer_key = "e6ea615fc3943c04"
@@ -46,8 +46,12 @@ def stocktwits_request(max_id):
     url='https://api.stocktwits.com/api/2/streams/suggested.json?access_token='
     #download the maximum number of tweets
     url=url+access_token
-    #query by max_id
-    url=url+'&max='+max_id
+    if len(max_id)>0:
+        #query by max_id
+        url=url+'&max='+max_id
+    if len(since_id)>0:
+        #query by max_id
+        url=url+'&since='+since_id
     # OAuth Client request
     try:
         resp, content = client.request(url, "GET")
@@ -98,20 +102,27 @@ def adjust_time(temp):
     return t_string
 ###########################################################################################################
 ###########################################################################################################
+max_id=''
+since_id=''
 limit=400
 M=0
+M_temp=999
 messages=[]
-max_id=''
-while limit>M:
-    dict1=stocktwits_request(max_id)
+#download messages as far back as allowed
+while limit>M and M_temp>0:
+    dict1=stocktwits_request(max_id,since_id)
     response=dict1['content']
     max_id=response['cursor']['max']-1
     max_id=str(max_id)
-    since_id=response['cursor']['since']
+    since_id=str(response['cursor']['since'])
     message=response['messages']
-    [messages.append(x) for x in message]
-    limit=int(dict1['limit'])
-    print limit, max_id, since_id, len(messages)
+    #check if query returned an empty list; if yes, then stop
+    M_temp=len(message)
+    if M_temp>0:
+        [messages.append(x) for x in message]
+        limit=int(dict1['limit'])
+        print limit, max_id, since_id, len(messages)
+        print response['messages'][0]['id'], response['messages'][-1]['id']
 ###########################################################################################################
 ###########################################################################################################
 N=len(messages)
@@ -157,9 +168,11 @@ DF_stocktwits['username']=username
 ###########################################################################################################
 import datetime
 current_time=datetime.datetime.now()
+month=(current_time.month)
+day=(current_time.day)
 hr=str(current_time.hour)
 mn=str(current_time.minute)
-current_time=str(hr+'_'+mn)
-str_csv='Stocktwits/'+date_[0]+'_'+current_time+'PST'+'.csv'
+current_time=str(month+'_'+day+'_'+hr+'_'+mn)
+str_csv='Stocktwits/'+'_'+current_time+'PST'+'.csv'
 DF_stocktwits.to_csv(str_csv,sep=',',header=True,index=True)
 
