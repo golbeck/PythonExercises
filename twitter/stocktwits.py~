@@ -81,7 +81,25 @@ def text_processing(text):
     return temp_text
 ###########################################################################################################
 ###########################################################################################################
+import pytz
+from datetime import datetime, timedelta
+
+def is_dst(zonename):
+    tz = pytz.timezone(zonename)
+    now = pytz.utc.localize(datetime.utcnow())
+    return now.astimezone(tz).dst() != timedelta(0)
+###########################################################################################################
+###########################################################################################################
 def adjust_time(temp):
+    #New York will stay on EDT until Sunday, November 2, 2014 at 2:00 AM
+    #when clocks are moved to Sunday, November 2, 2014 at 01:00:00EST
+    #if standard time, offset=5
+    #if daylight savings, offset=4
+    if is_dst("America/New_York")==True:
+        offset=4
+    else:
+        offset=5
+    
     #temp=messages[i]['created_at'].encode('utf8')
 
     #twitter times are reported in GMT
@@ -89,7 +107,7 @@ def adjust_time(temp):
     #that is, if you want 8am EST, enter 1pm in the datetime object
     #NYSE opens at 9:30am, closes at 4:00pm
 
-    t_int=int(temp[11:13])-5
+    t_int=int(temp[11:13])-offset
     if t_int<0:
         t_int=24+t_int
 
@@ -100,6 +118,55 @@ def adjust_time(temp):
 
     t_string=t_int+temp[13:19]
     return t_string
+###########################################################################################################
+###########################################################################################################
+def adjust_time_date(temp,temp_date):
+    #New York will stay on EDT until Sunday, November 2, 2014 at 2:00 AM
+    #when clocks are moved to Sunday, November 2, 2014 at 01:00:00EST
+    #if standard time, offset=5
+    #if daylight savings, offset=4
+    if is_dst("America/New_York")==True:
+        offset=4
+    else:
+        offset=5
+    
+    #temp=messages[i]['created_at'].encode('utf8')
+
+    #twitter times are reported in GMT
+    #convert to GMT-5 for EST (NYSE)
+    #that is, if you want 8am EST, enter 1pm in the datetime object
+    #NYSE opens at 9:30am, closes at 4:00pm
+
+    t_int=int(temp[11:13])-offset
+    if t_int<0:
+        t_int=24+t_int
+        #adjust date backward
+        temp_date=temp_date-timedelta(days=1)
+
+    t_int=str(t_int)
+
+    if int(t_int)<10:
+        t_int='0'+str(t_int)
+
+    t_string=t_int+temp[13:19]
+
+    temp_month=str(temp_date.month)
+    if temp_month<10:
+        temp_month='0'+str(temp_month)
+    
+    temp_day=str(temp_date.day)
+    if temp_day<10:
+        temp_day='0'+str(temp_day)
+    #return date
+    temp_=str(temp_date.year)+'-'+temp_month+'-'+temp_day
+
+    return [t_string,temp_]
+###########################################################################################################
+###########################################################################################################
+def adjust_string(string):
+    if len(string)<2:
+        string='0'+string
+    return string
 ###########################################################################################################
 ###########################################################################################################
 max_id=''
@@ -139,19 +206,25 @@ experience=[messages[i]['user']['trading_strategy']['experience'] for i in range
 holding_period=[messages[i]['user']['trading_strategy']['holding_period'] for i in range(N)]
 username=[messages[i]['user']['username'] for i in range(N)]
 
-
+t1=datetime(int(messages[i]['created_at'].encode('utf8')[0:4]),int(messages[i]['created_at'].encode('utf8')[5:7]),int(messages[i]['created_at'].encode('utf8')[8:10]))
 #generate date, time of day, day of week
-date_=[messages[i]['created_at'].encode('utf8')[0:10] for i in range(N)]
-time_=[adjust_time(messages[i]['created_at'].encode('utf8')) for i in range(N)]
-tz_=['EST' for i in range(N)]
+date_=[datetime(int(messages[i]['created_at'].encode('utf8')[0:4]),int(messages[i]['created_at'].encode('utf8')[5:7]),int(messages[i]['created_at'].encode('utf8')[8:10])) for i in range(N)]
+time_temp=[adjust_time_date(messages[i]['created_at'].encode('utf8'),date_[i]) for i in range(N)]
+time_hour=[time_temp[i][0] for i in range(N)]
+time_date=[time_temp[i][1] for i in range(N)]
+if is_dst("America/New_York")==True:
+    tz_=['EDT' for i in range(N)]
+else:
+    tz_=['EST' for i in range(N)]
+
 
 
 ###########################################################################################################
 ###########################################################################################################
 DF_stocktwits=pd.DataFrame()
 DF_stocktwits['text']=text
-DF_stocktwits['date']=date_
-DF_stocktwits['time']=time_
+DF_stocktwits['date']=time_date
+DF_stocktwits['time']=time_hour
 DF_stocktwits['tz']=tz_
 DF_stocktwits['message_id']=message_id
 DF_stocktwits['symbol']=symbol
@@ -166,13 +239,13 @@ DF_stocktwits['username']=username
 
 ###########################################################################################################
 ###########################################################################################################
-import datetime
-current_time=datetime.datetime.now()
-month=(current_time.month)
-day=(current_time.day)
-hr=str(current_time.hour)
-mn=str(current_time.minute)
-current_time=str(month+'_'+day+'_'+hr+'_'+mn)
-str_csv='Stocktwits/'+'_'+current_time+'PST'+'.csv'
+current_time=datetime.now()
+year=str(current_time.year)
+month=adjust_string(str(current_time.month))
+day=adjust_string(str(current_time.day))
+hr=adjust_string(str(current_time.hour))
+mn=adjust_string(str(current_time.minute))
+current_time=str(year+'-'+month+'-'+day+'-'+hr+'-'+mn)
+str_csv='/home/sgolbeck/workspace/PythonExercises/twitter/Stocktwits/'+current_time+'PST'+'.csv'
 DF_stocktwits.to_csv(str_csv,sep=',',header=True,index=True)
 
