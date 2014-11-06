@@ -1,0 +1,5 @@
+00 01,09,13 * * * /usr/bin/python /home/sgolbeck/workspace/PythonExercises/twitter/stocktwits.py
+03 01 * * * sudo rtcwake -m mem -s 28500
+03 09 * * * sudo rtcwake -m mem -s 14100 
+03 13 * * * sudo rtcwake -m mem -s 42900
+
