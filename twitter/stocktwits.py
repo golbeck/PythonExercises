@@ -246,6 +246,7 @@ day=adjust_string(str(current_time.day))
 hr=adjust_string(str(current_time.hour))
 mn=adjust_string(str(current_time.minute))
 current_time=str(year+'-'+month+'-'+day+'-'+hr+'-'+mn)
-str_csv='/home/sgolbeck/workspace/PythonExercises/twitter/Stocktwits/'+current_time+'PST'+'.csv'
+str_csv='/home/sgolbeck/Workspace/PythonExercises/twitter/Stocktwits/'+current_time+'PST'+'.csv'
+#str_csv='/home/sgolbeck/workspace/PythonExercises/twitter/Stocktwits/'+current_time+'PST'+'.csv'
 DF_stocktwits.to_csv(str_csv,sep=',',header=True,index=True)
 
