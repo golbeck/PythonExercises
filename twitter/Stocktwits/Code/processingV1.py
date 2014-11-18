@@ -18,12 +18,197 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     '''
 
 
+##################################################################################################
+##################################################################################################
+##################################################################################################
+def contraction(text):
+    n=len(text)
+    if n>1:
+        for i in range(1,n):
+            if len(text[i])==3:
+                #not
+                if text[i][0:3]=='39t':
+                    if text[i-1]=='aren':
+                        text[i-1]='are'
+                        text[i]='not'
+                    if text[i-1]=='can':
+                        text[i-1]='can'
+                        text[i]='not'
+                    if text[i-1]=='couldn':
+                        text[i-1]='could'
+                        text[i]='not'
+                    if text[i-1]=='didn':
+                        text[i-1]='did'
+                        text[i]='not'
+                    if text[i-1]=='doesn':
+                        text[i-1]='does'
+                        text[i]='not'
+                    if text[i-1]=='don':
+                        text[i-1]='do'
+                        text[i]='not'
+                    if text[i-1]=='hadn':
+                        text[i-1]='had'
+                        text[i]='not'
+                    if text[i-1]=='hasn':
+                        text[i-1]='has'
+                        text[i]='not'
+                    if text[i-1]=='haven':
+                        text[i-1]='have'
+                        text[i]='not'
+                    if text[i-1]=='isn':
+                        text[i-1]='is'
+                        text[i]='not'
+                    if text[i-1]=='mightn':
+                        text[i-1]='might'
+                        text[i]='not'
+                    if text[i-1]=='mustn':
+                        text[i-1]='must'
+                        text[i]='not'
+                    if text[i-1]=='shan':
+                        text[i-1]='shall'
+                        text[i]='not'
+                    if text[i-1]=='shouldn':
+                        text[i-1]='should'
+                        text[i]='not'
+                    if text[i-1]=='weren':
+                        text[i-1]='were'
+                        text[i]='not'
+                    if text[i-1]=='won':
+                        text[i-1]='will'
+                        text[i]='not'
+                    if text[i-1]=='wouldn':
+                        text[i-1]='would'
+                        text[i]='not'
+                #is
+                if text[i][0:3]=='39s':
+                    if text[i-1]=='it':
+                        text[i-1]='it'
+                        text[i]='is'
+                    if text[i-1]=='he':
+                        text[i-1]='he'
+                        text[i]='is'
+                    if text[i-1]=='she':
+                        text[i-1]='she'
+                        text[i]='is'
+                    if text[i-1]=='that':
+                        text[i-1]='that'
+                        text[i]='is'
+                    if text[i-1]=='there':
+                        text[i-1]='there'
+                        text[i]='is'
+                    if text[i-1]=='what':
+                        text[i-1]='what'
+                        text[i]='is'
+                    if text[i-1]=='where':
+                        text[i-1]='where'
+                        text[i]='is'
+                    if text[i-1]=='who':
+                        text[i-1]='who'
+                        text[i]='is'
+
+                #am
+                if text[i][0:3]=='39m':
+                    if text[i-1]=='I':
+                        text[i-1]='I'
+                        text[i]='am'
+                #would
+                if text[i][0:3]=='39d':
+                    if text[i-1]=='he':
+                        text[i-1]='he'
+                        text[i]='would'
+                    if text[i-1]=='I':
+                        text[i-1]='I'
+                        text[i]='would'
+                    if text[i-1]=='she':
+                        text[i-1]='she'
+                        text[i]='would'
+                    if text[i-1]=='they':
+                        text[i-1]='they'
+                        text[i]='would'
+                    if text[i-1]=='we':
+                        text[i-1]='we'
+                        text[i]='would'
+                    if text[i-1]=='who':
+                        text[i-1]='who'
+                        text[i]='would'
+                    if text[i-1]=='you':
+                        text[i-1]='you'
+                        text[i]='would'
+                #am
+                if text[i][0:3]=='39m':
+                    if text[i-1]=='I':
+                        text[i-1]='I'
+                        text[i]='am'
+            if len(text[i])==4:
+                #will/shall
+                if text[i][0:4]=='39ll':
+                    if text[i-1]=='she':
+                        text[i-1]='she'
+                        text[i]='will'
+                    if text[i-1]=='he':
+                        text[i-1]='he'
+                        text[i]='will'
+                    if text[i-1]=='I':
+                        text[i-1]='I'
+                        text[i]='will'
+                    if text[i-1]=='they':
+                        text[i-1]='they'
+                        text[i]='will'
+                    if text[i-1]=='what':
+                        text[i-1]='what'
+                        text[i]='will'
+                    if text[i-1]=='who':
+                        text[i-1]='who'
+                        text[i]='will'
+                    if text[i-1]=='you':
+                        text[i-1]='you'
+                        text[i]='will'
+                #have
+                if text[i][0:4]=='39ve':
+                    if text[i-1]=='I':
+                        text[i-1]='I'
+                        text[i]='have'
+                    if text[i-1]=='they':
+                        text[i-1]='they'
+                        text[i]='have'
+                    if text[i-1]=='we':
+                        text[i-1]='we'
+                        text[i]='have'
+                    if text[i-1]=='what':
+                        text[i-1]='what'
+                        text[i]='have'
+                    if text[i-1]=='who':
+                        text[i-1]='who'
+                        text[i]='have'
+                    if text[i-1]=='you':
+                        text[i-1]='you'
+                        text[i]='have'
+                #are
+                if text[i][0:4]=='39re':
+                    if text[i-1]=='they':
+                        text[i-1]='they'
+                        text[i]='are'
+                    if text[i-1]=='we':
+                        text[i-1]='we'
+                        text[i]='are'
+                    if text[i-1]=='what':
+                        text[i-1]='what'
+                        text[i]='are'
+                    if text[i-1]=='who':
+                        text[i-1]='who'
+                        text[i]='are'
+                    if text[i-1]=='you':
+                        text[i-1]='you'
+                        text[i]='are'
+    return text
+
 #generate list of tickers for stocks
 pwd_temp=%pwd
 #work computer directory
-#dir1='/home/sgolbeck/workspace/PythonExercises/twitter'
+dir1_='/home/sgolbeck/workspace/'
 #home computer directory
-dir1='/home/sgolbeck/Workspace/PythonExercises/twitter'
+#dir1_='/home/sgolbeck/Workspace/
+dir1=dir1_+'PythonExercises/twitter'
 
 if pwd_temp!=dir1:
     os.chdir(dir1)
@@ -41,10 +226,7 @@ tickers=set(tickers3)
 #################################################
 #import all of the tweets from the .csv files
 pwd_temp=%pwd
-#work computer directory
-#dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Stocktwits'
-#home computer directory
-dir1='/home/sgolbeck/Workspace/PythonExercises/twitter/Stocktwits'
+dir1=dir1_+'PythonExercises/twitter/Stocktwits'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 
@@ -109,17 +291,19 @@ DF=DF.drop_duplicates(['message_id'])
 DF=DF.sort(columns=['message_id'],ascending=True)
 DF.index=range(len(DF))
 
+#change '39_' tokens to contractions
+t1=[]
+for i in range(len(DF)):
+    t1.append(contraction(DF.ix[i,'text']))
+DF['text']=t1
+
 #save the dataframe to a CSV file
-#work computer directory
-#dir1='/home/sgolbeck/workspace/PythonExercises/twitter/Stocktwits/Processed'
-#home computer directory
-dir1='/home/sgolbeck/Workspace/PythonExercises/twitter/Stocktwits/Processed'
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Processed'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 writer = csv.writer(open('Stocktwits_database.csv', 'wb'))
 for i in DF.index:
     writer.writerow([DF.ix[i,j] for j in DF.columns])
-
 
 ##################################################################################################
 ##################################################################################################
@@ -132,6 +316,7 @@ DF_single.index=range(len(DF_single))
 
 
 #save the dataframe to a CSV file
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Processed'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 writer = csv.writer(open('Stocktwits_database_single.csv', 'wb'))
@@ -143,6 +328,9 @@ import random
 ind_train=random.sample(DF_single.index,1000)
 DF_train=DF_single.ix[ind_train]
 #save the training set to CSV
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Processed'
+if pwd_temp!=dir1:
+    os.chdir(dir1)
 writer = csv.writer(open('Stocktwits_database_train.csv', 'wb'))
 for i in DF_train.index:
     writer.writerow([DF_train.ix[i,j] for j in DF_train.columns])
@@ -207,11 +395,17 @@ DF_single_public=DF_single.ix[tick_ind]
 DF_single_public.index=range(len(DF_single_public))
 
 #save the dataframe to a CSV file
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Processed'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 writer = csv.writer(open('Stocktwits_database_single_public.csv', 'wb'))
 for i in DF_single_public.index:
     writer.writerow([DF_single_public.ix[i,j] for j in DF_single_public.columns])
 
+#remove Swing Traders from dataframe
+DF_single_swing=DF_single[DF_single['holding_per']!='Swing Trader']
+DF_single_position=DF_single[DF_single['holding_per']!='Position Trader']
+DF_single_position_swing=DF_single_position[DF_single_position['holding_per']!='Swing Trader']
 
 
+from nltk.collocations import *
