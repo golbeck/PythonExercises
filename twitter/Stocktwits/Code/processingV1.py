@@ -408,4 +408,37 @@ DF_single_position=DF_single[DF_single['holding_per']!='Position Trader']
 DF_single_position_swing=DF_single_position[DF_single_position['holding_per']!='Swing Trader']
 
 
+
+##################################################################################################
+##################################################################################################
+##################################################################################################
+#find bigrams and sort according to frequency
+#generate n-gram frequencies from DF_single_public
+#first, combine all tweets into a single corpus, separating each with a period
+token_list=[]
+for i in range(len(DF_single_public)):
+    [token_list.append(x.lower()) for x in DF_single_public.ix[i,'text']]
+    #separate tweets by periods
+    token_list.append('.')
+print len(token_list)
+
+#import collocation packages
+import nltk
 from nltk.collocations import *
+bigram_measures = nltk.collocations.BigramAssocMeasures()
+trigram_measures = nltk.collocations.TrigramAssocMeasures()
+
+#The collocations package provides collocation finders which by default consider all ngrams in a text as candidate collocations:
+finder = BigramCollocationFinder.from_words(token_list)
+#raw frequency scoring, can choose other methods
+scored = finder.score_ngrams(bigram_measures.raw_freq)
+bigram_scores=[x for x in scored]
+sorted(bigram for bigram, score in scored)
+
+##manual frequency scoring
+#word_fd = nltk.FreqDist(token_list)
+#bigram_fd = nltk.FreqDist(nltk.bigrams(token_list))
+#finder = BigramCollocationFinder(word_fd, bigram_fd)
+#scored == finder.score_ngrams(bigram_measures.raw_freq)
+#sorted(bigram for bigram, score in scored)
+
