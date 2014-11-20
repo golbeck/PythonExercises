@@ -18,6 +18,13 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     '''
 
 
+#generate list of tickers for stocks
+pwd_temp=%pwd
+#work computer directory
+dir1_='/home/sgolbeck/workspace/'
+#home computer directory
+#dir1_='/home/sgolbeck/Workspace/
+
 ##################################################################################################
 ##################################################################################################
 ##################################################################################################
@@ -202,12 +209,7 @@ def contraction(text):
                         text[i]='are'
     return text
 
-#generate list of tickers for stocks
-pwd_temp=%pwd
-#work computer directory
-dir1_='/home/sgolbeck/workspace/'
-#home computer directory
-#dir1_='/home/sgolbeck/Workspace/
+#directory for ticker symbols
 dir1=dir1_+'PythonExercises/twitter'
 
 if pwd_temp!=dir1:
@@ -457,6 +459,11 @@ text_tagged=nltk.pos_tag(text)
 #see http://www.nltk.org/book/ch07.html
 #using regular expression:
 #    https://docs.python.org/2/library/re.html
+#("Rapunzel", "NNP"), ("let", "VBD"), ("down", "RP"), # [_code-chunker1-ex]
+#                 ("her", "PP$"), ("long", "JJ"), ("golden", "JJ"), ("hair", "NN")]
+text=nltk.word_tokenize('Rapunzel let down her long golden hair')
+text=nltk.word_tokenize('the little yellow dog barked at the cat')
+text_tagged=nltk.pos_tag(text)
 grammar = "NP: {<DT>?<JJ>*<NN>}"
 grammar = r"""
   NP: {<DT|PP\$>?<JJ>*<NN>}   # chunk determiner/possessive, adjectives and noun
