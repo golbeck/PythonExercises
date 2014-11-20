@@ -433,7 +433,7 @@ finder = BigramCollocationFinder.from_words(token_list)
 #raw frequency scoring, can choose other methods
 scored = finder.score_ngrams(bigram_measures.raw_freq)
 bigram_scores=[x for x in scored]
-sorted(bigram for bigram, score in scored)
+#sorted(bigram for bigram, score in scored)
 
 ##manual frequency scoring
 #word_fd = nltk.FreqDist(token_list)
@@ -442,3 +442,28 @@ sorted(bigram for bigram, score in scored)
 #scored == finder.score_ngrams(bigram_measures.raw_freq)
 #sorted(bigram for bigram, score in scored)
 
+
+
+##################################################################################################
+##################################################################################################
+##################################################################################################
+#requires that 'maxent_treebank_pos_tagger' and 'punkt' has been downloaded
+#for tags see:
+#   http://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+#   nltk.help.upenn_tagset()
+text=DF_single_public.ix[0,'text']
+text_tagged=nltk.pos_tag(text)
+#an NP chunk should be formed whenever the chunker finds an optional determiner (DT) followed by any number of adjectives (JJ) and then a noun (NN). 
+#see http://www.nltk.org/book/ch07.html
+#using regular expression:
+#    https://docs.python.org/2/library/re.html
+grammar = "NP: {<DT>?<JJ>*<NN>}"
+grammar = r"""
+  NP: {<DT|PP\$>?<JJ>*<NN>}   # chunk determiner/possessive, adjectives and noun
+      {<NNP>+}                # chunk sequences of proper nouns
+"""
+#create a chunk parser
+cp = nltk.RegexpParser(grammar)
+#test it on our example sentence
+result = cp.parse(text_tagged)
+print(result)
