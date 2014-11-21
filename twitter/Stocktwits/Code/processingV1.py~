@@ -18,6 +18,13 @@ pattern = r'''(?x)    # set flag to allow verbose regexps
     '''
 
 
+#generate list of tickers for stocks
+pwd_temp=%pwd
+#work computer directory
+dir1_='/home/sgolbeck/workspace/'
+#home computer directory
+#dir1_='/home/sgolbeck/Workspace/
+
 ##################################################################################################
 ##################################################################################################
 ##################################################################################################
@@ -202,12 +209,7 @@ def contraction(text):
                         text[i]='are'
     return text
 
-#generate list of tickers for stocks
-pwd_temp=%pwd
-#work computer directory
-dir1_='/home/sgolbeck/workspace/'
-#home computer directory
-#dir1_='/home/sgolbeck/Workspace/
+#directory for ticker symbols
 dir1=dir1_+'PythonExercises/twitter'
 
 if pwd_temp!=dir1:

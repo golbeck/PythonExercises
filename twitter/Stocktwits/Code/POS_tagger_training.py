@@ -1,3 +1,16 @@
+#description of NLTK corpora:
+#   http://www.nltk.org/_modules/nltk/app/concordance_app.html
+
+#Not all corpora employ the same set of tags; see the tagset help functionality and the readme() methods mentioned above for documentation. Initially we want to avoid the complications of these tagsets, so we use a built-in mapping to the "Universal Tagset":
+# http://www.nltk.org/book/ch05.html#tab-universal-tagset
+# from nltk.corpus import brown
+# brown_news_tagged = brown.tagged_words(categories='news', tagset='universal')
+# nltk.corpus.brown.tagged_words(tagset='universal')
+#[('The', 'DET'), ('Fulton', 'NOUN'), ...]
+# nltk.corpus.treebank.tagged_words(tagset='universal')
+#[('Pierre', 'NOUN'), ('Vinken', 'NOUN'), (',', '.'), ...]
+
+
 #First you need the train data and test data, we use the treebank data from nltk.corpus:
 from nltk.corpus import treebank
 len(treebank.tagged_sents())
@@ -103,6 +116,8 @@ cpos.tag(nltk.word_tokenize('the little yellow dog barked at the cat'))
 #train on brown (entire set)
 import itertools
 from nltk.corpus import nps_chat, conll2000, treebank
+#Penn Treebank tags:
+#http://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
  
 nps_dat = nps_chat.tagged_posts()
 conll_train = conll2000.tagged_sents('train.txt')
