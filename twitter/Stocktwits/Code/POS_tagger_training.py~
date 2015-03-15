@@ -1,0 +1,165 @@
+#description of NLTK corpora:
+#   http://www.nltk.org/_modules/nltk/app/concordance_app.html
+
+#Not all corpora employ the same set of tags; see the tagset help functionality and the readme() methods mentioned above for documentation. Initially we want to avoid the complications of these tagsets, so we use a built-in mapping to the "Universal Tagset":
+#
+# nltk.corpus.brown.tagged_words(tagset='universal')
+#[('The', 'DET'), ('Fulton', 'NOUN'), ...]
+# nltk.corpus.treebank.tagged_words(tagset='universal')
+#[('Pierre', 'NOUN'), ('Vinken', 'NOUN'), (',', '.'), ...]
+
+
+#First you need the train data and test data, we use the treebank data from nltk.corpus:
+from nltk.corpus import treebank
+len(treebank.tagged_sents())
+
+train_data = treebank.tagged_sents()[:3000]
+test_data = treebank.tagged_sents()[3000:]
+train_data[0]
+
+#We use the first 3000 treebank tagged sentences as the train_data, and last 914 tagged sentences as the test_data, now we train TnT POS Tagger by the train_data and evaluate it by the test_data:
+from nltk.tag import tnt
+tnt_pos_tagger = tnt.TnT()
+tnt_pos_tagger.train(train_data)
+tnt_pos_tagger.evaluate(test_data)
+
+#You can save this pos tagger model as a pickle file:
+
+import pickle
+f = open('cpos_tagger.pickle', 'w')
+pickle.dump(cpos_tagger, f)
+f.close()
+
+#And you can use it any time you want:
+
+tnt_pos_tagger.tag(nltk.word_tokenize('this is a tnt treebank tnt tagger'))
+
+##############################################################################################
+##############################################################################################
+##############################################################################################
+#adapted from http://streamhacker.com/2010/04/12/pos-tag-nltk-brill-classifier/
+import itertools
+from nltk.corpus import brown, conll2000, treebank
+ 
+brown_reviews = brown.tagged_sents(categories=['reviews'])
+brown_reviews_cutoff = len(brown_reviews) * 2 / 3
+brown_lore = brown.tagged_sents(categories=['lore'])
+brown_lore_cutoff = len(brown_lore) * 2 / 3
+brown_romance = brown.tagged_sents(categories=['romance'])
+brown_romance_cutoff = len(brown_romance) * 2 / 3
+ 
+brown_train = list(itertools.chain(brown_reviews[:brown_reviews_cutoff],
+    brown_lore[:brown_lore_cutoff], brown_romance[:brown_romance_cutoff]))
+brown_test = list(itertools.chain(brown_reviews[brown_reviews_cutoff:],
+    brown_lore[brown_lore_cutoff:], brown_romance[brown_romance_cutoff:]))
+ 
+conll_train = conll2000.tagged_sents('train.txt')
+conll_test = conll2000.tagged_sents('test.txt')
+ 
+treebank_cutoff = len(treebank.tagged_sents()) * 2 / 3
+treebank_train = treebank.tagged_sents()[:treebank_cutoff]
+treebank_test = treebank.tagged_sents()[treebank_cutoff:]
+
+#train on treebank
+cpos = nltk.tag.sequential.ClassifierBasedPOSTagger(train=treebank.tagged_sents())
+cpos.evaluate(treebank_test)
+cpos.tag(nltk.word_tokenize('the little yellow dog barked at the cat'))
+
+##############################################################################################
+##############################################################################################
+#train on brown (entire set)
+import itertools
+from nltk.corpus import brown
+ 
+brown_reviews = brown.tagged_sents(categories=['reviews'])
+brown_lore = brown.tagged_sents(categories=['lore'])
+brown_romance = brown.tagged_sents(categories=['romance'])
+
+brown_train = list(itertools.chain(brown_reviews,brown_lore, brown_romance))
+
+cpos = nltk.tag.sequential.ClassifierBasedPOSTagger(train=brown_train)
+cpos.tag(nltk.word_tokenize('the little yellow dog barked at the cat'))
+#Brown POS tags: http://www.scs.leeds.ac.uk/ccalas/tagsets/brown.html
+
+pwd_temp=%pwd
+#work computer directory
+dir1_='/home/sgolbeck/workspace/'
+#home computer directory
+#dir1_='/home/sgolbeck/Workspace/
+#directory for saving pickle file 
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Code'
+if pwd_temp!=dir1:
+    os.chdir(dir1)
+#save trained tagger
+import pickle
+f = open('cpos_tagger.pickle', 'w')
+pickle.dump(cpos, f)
+f.close()
+
+
+pwd_temp=%pwd
+#work computer directory
+dir1_='/home/sgolbeck/workspace/'
+#home computer directory
+#dir1_='/home/sgolbeck/Workspace/
+#directory for pickle file 
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Code'
+if pwd_temp!=dir1:
+    os.chdir(dir1)
+#load the trained tagger from the pickle file
+cpos = pickle.load(open("cpos_tagger.pickle"))
+cpos.tag(nltk.word_tokenize('the little yellow dog barked at the cat'))
+##############################################################################################
+##############################################################################################
+#train on brown (entire set)
+import itertools
+from nltk.corpus import nps_chat, conll2000, treebank
+#Penn Treebank tags:
+#http://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
+ 
+nps_dat = nps_chat.tagged_posts()
+conll_train = conll2000.tagged_sents('train.txt')
+conll_test = conll2000.tagged_sents('test.txt')
+treebank_train = treebank.tagged_sents()
+set_train = list(itertools.chain(nps_dat,conll_train,conll_test,treebank_train))
+
+cpos_v2 = nltk.tag.sequential.ClassifierBasedPOSTagger(train=set_train)
+cpos_v2.tag(nltk.word_tokenize('the little yellow dog barked at the cat'))
+cpos_v2.tag(nltk.word_tokenize('Rapunzel let down her long golden hair'))
+
+#evaluate the tagger on each corpus
+cpos_v2.evaluate(nps_dat)
+cpos_v2.evaluate(conll_train)
+cpos_v2.evaluate(conll_test)
+cpos_v2.evaluate(treebank_train)
+
+pwd_temp=%pwd
+#work computer directory
+dir1_='/home/sgolbeck/workspace/'
+#home computer directory
+#dir1_='/home/sgolbeck/Workspace/
+#directory for saving pickle file 
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Code'
+if pwd_temp!=dir1:
+    os.chdir(dir1)
+#save trained tagger
+import pickle
+f = open('cpos_v2_tagger.pickle', 'w')
+pickle.dump(cpos_v2, f)
+f.close()
+
+
+pwd_temp=%pwd
+#work computer directory
+dir1_='/home/sgolbeck/workspace/'
+#home computer directory
+#dir1_='/home/sgolbeck/Workspace/
+#directory for pickle file 
+dir1=dir1_+'PythonExercises/twitter/Stocktwits/Code'
+if pwd_temp!=dir1:
+    os.chdir(dir1)
+#load the trained tagger from the pickle file
+cpos_v2 = pickle.load(open("cpos_v2_tagger.pickle"))
+cpos_v2.tag(nltk.word_tokenize('the little yellow dog barked at the cat'))
+cpos_v2.tag(nltk.word_tokenize('Rapunzel let down her long golden hair'))
+
