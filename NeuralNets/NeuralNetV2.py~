@@ -15,6 +15,15 @@ def z1(a,b,y1,y2):
     print y1(a,b)
     print y2(a,b)
 
+#test output
+X=np.array([[1,2,3],[4,5,6]])
+Y=np.array([[1,0,0,0],[0,1,0,0]])
+alpha=np.array([[1,1],[1,1],[1,1],[1,1]])
+beta=np.array([[1,1,1,1],[1,1,1,1],[1,1,1,1]])
+cost_fn(alpha,beta,X,Y,special.expit,special.expit)
+
+
+
 ####################################################################################
 ####################################################################################
 def cost_fn(alpha,beta,X,Y,activation_fn,output_fn):
@@ -32,7 +41,7 @@ def cost_fn(alpha,beta,X,Y,activation_fn,output_fn):
     #number of input features 
     p=X.shape[1]
     #add bias vector to inputs
-    X=np.column_stack((np.ones(m),np.copy(X)))
+    X=np.column_stack((np.ones(n),np.copy(X)))
     #number of rows in the dependent variable
     n_Y=Y.shape[0]
     #check if X and Y have the same number of observations
@@ -40,12 +49,13 @@ def cost_fn(alpha,beta,X,Y,activation_fn,output_fn):
         print "number of rows in X and Y are not the same"
         return -9999.
     
-    #compute inputs to hidden layers
-    Z
+    #hidden layer outputs
+    Z=activation_fn(np.dot(X,alpha))
+    #add bias vector to hidden layer 
+    Z=np.column_stack((np.ones(n),np.copy(Z)))
     
-    #compute logistic function
-    g=1/(1+np.exp(-np.dot(X,theta)))
-    #log likelihood func
+    
+    
     temp0=-np.log(g)*Y-np.log(1-g)*(1-Y)
     temp1=theta_reg**2
     J=(temp0.sum(axis=0)+0.5*eps*temp1.sum(axis=0))/n

@@ -1,3 +1,6 @@
+#implements logistic classification
+#example: handwriting digit recognition, one vs. all
+
 import numpy as np
 import os
 ####################################################################################

@@ -143,7 +143,6 @@ def confusion_matrix_multi(y_out,y,n_class):
             CF[y[i]-1,y[i]-1]+=1
         else:
             CF[y[i]-1,y_out[i]-1]+=1
-            CF[y_out[i]-1,y[i]-1]+=1
             
     return CF        
 ####################################################################################

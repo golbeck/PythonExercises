@@ -2,10 +2,10 @@ import numpy as np
 import os
 
 def x(a,b):
-    print "param 1 %s param 2 %s"%(a,b)
+    return np.array([a,b]).transpose()
 
 def y(z,t):
-    print z(*t)
+    return z(*t)
 
 def z(y1,t1,y2,t2):
     print y1(*t1)
@@ -54,6 +54,10 @@ def cost_fn(alpha,beta,X,Y,activation_fn,output_fn):
     #add bias vector to hidden layer 
     Z=np.column_stack((np.ones(n),np.copy(Z)))
     
+    #linear combination of hidden layer outputs
+    T=np.dot(Z,beta)
+    #outputs
+    g=[output_fn(j,T) for j in range(K)]
     
     
     temp0=-np.log(g)*Y-np.log(1-g)*(1-Y)
