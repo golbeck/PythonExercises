@@ -2,10 +2,10 @@
 from scipy import special
 X=np.array([[1,2,3],[4,5,6]])
 Y=np.array([[1,0,0,0],[0,1,0,0]])
-alpha=np.array([[1,1],[1,1],[1,1],[1,1]])
-beta=np.array([[1,1,1,1],[1,1,1,1],[1,1,1,1]])
+alpha=np.array([[1,2],[3,4],[5,6],[7,8]])
+beta=np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12]])
 cost_fn(alpha,beta,X,Y,special.expit,softmax_fn)
-
+grad_beta_cost(alpha,beta,X,Y,special.expit,softmax_fn)
 #dimension of data
 #number of rows (observations)
 n=X.shape[0]   
@@ -25,12 +25,14 @@ if(n!=n_Y):
 Z=special.expit(np.dot(X,alpha))
 #add bias vector to hidden layer 
 Z=np.column_stack((np.ones(n),np.copy(Z)))
-
+#number of hidden layers (including bias)
+M=Z.shape[1]
 #linear combination of hidden layer outputs
 T=np.dot(Z,beta)
 #outputs
 g=softmax_fn(T)
 
+#compute 
 temp1=(Y/g)
 temp2=grad_softmax(T)
 #Y*(1/g)*dg/dT
@@ -38,6 +40,20 @@ C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).tran
 #test output of C
 temp3=Y[0,0]/g[0,0]*temp2[0,0,1]
 print temp3, C[0,0,1]
+temp3=Y[0,1]/g[0,1]*temp2[0,1,0]
+print temp3, C[0,1,0]
+
+#sum over output classes
+D1=C.sum(axis=1)
+#sum[Y*(1/g)*dg/dT]*Z
+#dim (n,K,M): (obs index,class index,hidden layer index)
+cost_grad_beta=-np.array([[D1[:,k] for k in range(K)]*Z[:,j] for j in range(M)]).transpose()
+
+#alpha gradient
+#sum[sum[Y*(1/g)*dg/dT]*beta]
+D3=np.array([[D1[i,:]*beta[j,:] for j in range(M)] for i in range(n)]).sum(axis=2)
+#dim (n,p+1,M)
+cost_grad_alpha=np.array([[D3[:,j]*X[:,k] for k in range(p+1)] for j in range(M)]).transpose()
 
 f=-(np.log(g)*Y).sum()
 
@@ -137,7 +153,7 @@ def grad_alpha_cost(alpha,beta,X,Y,activation_fn,output_fn):
     #Y: np.array of outputs; dim (n,K) (K is the number of classes)
     #activation_fn: activation function
     #output_fn: output function
-    
+
     #dimension of data
     #number of rows (observations)
     n=X.shape[0]   
@@ -158,14 +174,29 @@ def grad_alpha_cost(alpha,beta,X,Y,activation_fn,output_fn):
     Z=activation_fn(np.dot(X,alpha))
     #add bias vector to hidden layer 
     Z=np.column_stack((np.ones(n),np.copy(Z)))
+    #number of hidden layers (including bias)
+    M=Z.shape[1]
     
     #linear combination of hidden layer outputs
     T=np.dot(Z,beta)
     #outputs
-    g=output_fn(T)    
-    #generate negative log likelihood function
-    f=-(np.log(g)*Y).sum()
-    return f
+    g=output_fn(T)
+    
+    #compute 
+    temp1=(Y/g)
+    temp2=grad_softmax(T)
+    #Y*(1/g)*dg/dT
+    C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
+
+    #sum over output classes
+    D1=C.sum(axis=1)
+
+    #alpha gradient
+    #sum[sum[Y*(1/g)*dg/dT]*beta]
+    D3=np.array([[D1[i,:]*beta[j,:] for j in range(M)] for i in range(n)]).sum(axis=2)
+    #dim (n,p+1,M), (obs index,feature index,hidden layer index)
+    cost_grad_alpha=np.array([[D3[:,j]*X[:,k] for k in range(p+1)] for j in range(M)]).transpose()
+    return cost_grad_alpha
 ####################################################################################
 ####################################################################################
 def grad_beta_cost(alpha,beta,X,Y,activation_fn,output_fn):
@@ -176,7 +207,7 @@ def grad_beta_cost(alpha,beta,X,Y,activation_fn,output_fn):
     #Y: np.array of outputs; dim (n,K) (K is the number of classes)
     #activation_fn: activation function
     #output_fn: output function
-    
+
     #dimension of data
     #number of rows (observations)
     n=X.shape[0]   
@@ -197,14 +228,26 @@ def grad_beta_cost(alpha,beta,X,Y,activation_fn,output_fn):
     Z=activation_fn(np.dot(X,alpha))
     #add bias vector to hidden layer 
     Z=np.column_stack((np.ones(n),np.copy(Z)))
+    #number of hidden layers (including bias)
+    M=Z.shape[1]
     
     #linear combination of hidden layer outputs
     T=np.dot(Z,beta)
     #outputs
-    g=output_fn(T)    
-    #generate negative log likelihood function
-    f=-(np.log(g)*Y).sum()
-    return f
+    g=output_fn(T)
+    
+    #compute 
+    temp1=(Y/g)
+    temp2=grad_softmax(T)
+    #Y*(1/g)*dg/dT
+    C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
+
+    #sum over output classes
+    D1=C.sum(axis=1)
+    #sum[Y*(1/g)*dg/dT]*Z
+    #dim (n,K,M): (obs index,class index,hidden layer index)
+    cost_grad_beta=-np.array([[D1[:,k] for k in range(K)]*Z[:,j] for j in range(M)]).transpose()
+    return cost_grad_beta
 ####################################################################################
 ####################################################################################
 ####################################################################################
