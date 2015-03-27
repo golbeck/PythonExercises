@@ -2,10 +2,28 @@
 from scipy import special
 X=np.array([[1,2,3],[4,5,6]])
 Y=np.array([[1,0,0,0],[0,1,0,0]])
-alpha=np.array([[1,2],[3,4],[5,6],[7,8]])
-beta=np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12]])
+#dim (p+1,M-1), (#features including input bias,#hidden layers not including bias)
+alpha=np.array([[0.1,0.2,0.2],[0.3,0.4,0.5],[0.5,0.6,0.8],[0.7,0.8,0.9]])
+#dim (M,K), (#hidden layers including bias hidden layer,#classes)
+beta=np.array([[0.1,0.2,0.3,0.4],[0.5,0.6,0.7,0.8],[0.9,0.10,0.11,0.12],[0.9,0.10,0.11,0.12]])
 cost_fn(alpha,beta,X,Y,special.expit,softmax_fn)
 grad_beta_cost(alpha,beta,X,Y,special.expit,softmax_fn)
+#test alpha gradient
+eps_alpha=0.001
+alpha_u=np.copy(alpha)
+alpha_u[0,0]=alpha_u[0,0]+eps_alpha
+alpha_d=np.copy(alpha)
+alpha_d[0,0]=alpha_d[0,0]-eps_alpha
+alpha_grad_test=(cost_fn(alpha_u,beta,X,Y,special.expit,softmax_fn)
+    -cost_fn(alpha_d,beta,X,Y,special.expit,softmax_fn))/(2*eps_alpha)
+#test beta gradient
+eps_beta=0.001
+beta_u=np.copy(beta)
+beta_u[0,0]=beta_u[0,0]+eps_beta
+beta_d=np.copy(beta)
+beta_d[0,0]=beta_d[0,0]-eps_alpha
+beta_grad_test=(cost_fn(alpha,beta_u,X,Y,special.expit,softmax_fn)
+    -cost_fn(alpha,beta_d,X,Y,special.expit,softmax_fn))/(2*eps_beta)
 #dimension of data
 #number of rows (observations)
 n=X.shape[0]   
@@ -32,6 +50,7 @@ T=np.dot(Z,beta)
 #outputs
 g=softmax_fn(T)
 
+f=-(np.log(g)*Y).sum()
 #compute 
 temp1=(Y/g)
 temp2=grad_softmax(T)
@@ -46,16 +65,66 @@ print temp3, C[0,1,0]
 #sum over output classes
 D1=C.sum(axis=1)
 #sum[Y*(1/g)*dg/dT]*Z
-#dim (n,K,M): (obs index,class index,hidden layer index)
+#dim (n,K,M): (obs index,class index,hidden layer index including bias
 cost_grad_beta=-np.array([[D1[:,k] for k in range(K)]*Z[:,j] for j in range(M)]).transpose()
 
 #alpha gradient
 #sum[sum[Y*(1/g)*dg/dT]*beta]
-D3=np.array([[D1[i,:]*beta[j,:] for j in range(M)] for i in range(n)]).sum(axis=2)
+D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n)]).sum(axis=2)
+#sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
+grad_activation_fn=grad_sigmoid(np.dot(X,alpha))
+D4=D3*grad_activation_fn
 #dim (n,p+1,M)
-cost_grad_alpha=np.array([[D3[:,j]*X[:,k] for k in range(p+1)] for j in range(M)]).transpose()
+cost_grad_alpha=-np.array([[D4[:,j]*X[:,k] for k in range(p+1)] for j in range(M-1)]).transpose()
+
 
 f=-(np.log(g)*Y).sum()
+
+####################################################################################
+####################################################################################
+#gradient descent
+
+k_iter=0
+abs_diff=1e8
+while((abs_diff>tol)&(k_iter<k_max)):
+    #hidden layer outputs
+    Z=special.expit(np.dot(X,alpha))
+    #add bias vector to hidden layer 
+    Z=np.column_stack((np.ones(n),np.copy(Z)))
+    #linear combination of hidden layer outputs
+    T=np.dot(Z,beta)
+    #outputs
+    g=softmax_fn(T)
+
+    #compute 
+    temp1=(Y/g)
+    temp2=grad_softmax(T)
+    #Y*(1/g)*dg/dT
+    C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
+
+    #sum over output classes
+    D1=C.sum(axis=1)
+    #sum[Y*(1/g)*dg/dT]*Z
+    #dim (n,K,M): (obs index,class index,hidden layer index)
+    cost_grad_beta=-np.array([[D1[:,k] for k in range(K)]*Z[:,j] for j in range(M)]).transpose()
+
+    #alpha gradient
+    #sum[sum[Y*(1/g)*dg/dT]*beta]
+    D3=np.array([[D1[i,:]*beta[j,:] for j in range(M)] for i in range(n)]).sum(axis=2)
+    #dim (n,p+1,M)
+    cost_grad_alpha=np.array([[D3[:,j]*X[:,k] for k in range(p+1)] for j in range(M)]).transpose()
+
+    beta=beta-eps_beta*grad_beta
+
+    alpha=alpha-eps_alpha*grad_alpha
+
+    J_new=cost_fn(alpha,beta,X,Y,special.expit,softmax_fn)
+    abs_diff=abs(J-J_new)
+    J=J_new
+    k_iter+=1
+#        print k,J
+return theta    
+
 
 ####################################################################################
 ####################################################################################
@@ -274,36 +343,6 @@ def grad_beta_cost(alpha,beta,X,Y,activation_fn,output_fn):
 #################################################################################### 
 ####################################################################################
 #################################################################################### 
-def prob_logistic_pred(theta,X):
-    #theta: np.array of parameters
-    #X: np.array of inputs (each of the m rows is a separate observation)
-    #compute logistic function
-    g=1/(1+np.exp(-np.dot(X,theta)))
-    y_out=g>0.5
-    y=np.column_stack((g,y_out))
-    return y
-####################################################################################
-#################################################################################### 
-def fit_logistic_class(bias,theta,X,y,eps,tol,k_max):
-    #theta: np.array of parameters
-    #bias: 0: no bias; 1: bias term
-    #X: np.array of inputs (each of the m rows is a separate observation)
-    #y: np.array of outputs
-    #eps: regularization constant (set to zero if unregularized)
-    #tol: stopping tolerance for change in cost function
-    #k_max: maximum number of iterations for gradient descent
-    #compute logistic function
-    J=cost_fn(bias,theta,X,Y,eps)
-    k=0
-    abs_diff=1e8
-    while((abs_diff>tol)&(k<k_max)):
-        theta-=grad_cost(bias,theta,X,Y,eps)
-        J_new=cost_fn(bias,theta,X,Y,eps)
-        abs_diff=abs(J-J_new)
-        J=J_new
-        k+=1
-#        print k,J
-    return theta
 ####################################################################################
 ####################################################################################    
 pwd_temp=%pwd
@@ -332,25 +371,6 @@ theta=fit_logistic_class(bias,theta,X,Y,eps,tol,k_max)
 y_out=prob_logistic_pred(theta,X)[:,1]
 print confusion_matrix(y_out,Y)
 
-
-
-####################################################################################
-####################################################################################  
-#compare to statsmodels logistic regression method
-import statsmodels.api as sm
-from sklearn.metrics import confusion_matrix
- 
-# fit the model
-logit=sm.Logit(Y,X)
-result=logit.fit()
-#classify if prediction > 0.5
-Y_out=result.predict(X)
-Y_out_ind=Y_out>0.5
-
-#confusion matrix
-cm = confusion_matrix(Y,Y_out_ind)
-print(cm)
-
 ####################################################################################
 ####################################################################################  
 ####################################################################################
@@ -359,89 +379,5 @@ print(cm)
 ####################################################################################  
 ####################################################################################
 ####################################################################################  
-import scipy
-dat=scipy.io.loadmat(dir1+'/ex3data1.mat')
-Y_all=np.array(dat['y'])
-#reshape to 1d np.array
-Y_all=Y_all.ravel()
-X=np.array(dat['X'])
-m=X.shape[0]
-n=X.shape[1]
-#add in bias term
-bias=1
-if(bias==1):
-    n=X.shape[1]+1
-    X=np.column_stack((np.ones(m),np.copy(X)))
-
-tol=1e-6
-eps=0.1
-k_max=10000
-k=0
-Y_class=np.arange(1,11)
-prob_out=np.zeros((m,10))
-for i in Y_class:
-    Y=(Y_all==i).astype(int)
-    theta=np.random.normal(size=n)
-    theta=fit_logistic_class(bias,theta,X,Y,eps,tol,k_max)
-    y=prob_logistic_pred(theta,X)
-    prob_out[:,i-1]=y[:,0]
-    
-Y_out=prob_out.argmax(axis=1)+1
-CM=confusion_matrix_multi(Y_out,Y_all,10)
-print CM
-error_rate=CM.diagonal().sum(0)/m
-print error_rate
-####################################################################################
-####################################################################################
-####################################################################################  
-####################################################################################
-####################################################################################  
-####################################################################################
-####################################################################################  
-
-Y_class=np.arange(1,11)
-prob_out_skl=np.zeros((m,10))
-for i in Y_class:
-    Y=(Y_all==i).astype(int)
-    logit=sm.Logit(Y,X)
-    result=logit.fit()
-    #classify if prediction > 0.5
-    Y_out=result.predict(X)
-    prob_out_skl[:,i-1]=Y_out_ind
-    
-Y_out_skl=prob_out_skl.argmax(axis=1)+1
-CM=confusion_matrix_multi(Y_out_skl,Y_all,10)
-####################################################################################  
-####################################################################################
-####################################################################################  
-####################################################################################
-####################################################################################  
-
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.svm import LinearSVC
-Y_out_SVC=OneVsRestClassifier(LinearSVC(random_state=0)).fit(X, Y_all).predict(X)
-
-cm = confusion_matrix(Y_all,Y_out_SVC)
-print(cm)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
