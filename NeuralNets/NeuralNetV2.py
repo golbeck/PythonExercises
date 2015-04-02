@@ -1,18 +1,26 @@
 #test output
-from scipy import special
 X=np.array([[1,2,3],[4,5,6]])
 Y=np.array([[1,0,0,0,0],[0,1,0,0,0]])
 #dim (p+1,M-1), (#features including input bias,#hidden layers not including bias)
 alpha=np.array([[0.1,0.2,0.2],[0.3,0.4,0.5],[0.5,0.6,0.8],[0.7,0.8,0.9]])
 #dim (M,K), (#hidden layers including bias hidden layer,#classes)
 beta=np.array([[0.1,0.2,0.3,0.4,0.41],[0.5,0.6,0.7,0.8,0.91],[0.9,0.10,0.11,0.12,0.131],[0.9,0.10,0.11,0.12,0.144]])
+
+
+####################################################################################
+####################################################################################
+#gradient descent
+k_max=10
+eps_alpha=0.01
+eps_beta=0.01
+params=NN_fit_grad_descent(k_max,eps_alpha,eps_beta,alpha,beta,X,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
 cost_fn(alpha,beta,X,Y,special.expit,softmax_fn)
 cost_grad_beta0= grad_beta_cost(alpha,beta,X,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 cost_grad_alpha0= grad_alpha_cost(alpha,beta,X,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
-
-
-####################################################################################
-####################################################################################
 #test alpha gradient
 eps_alpha=0.001
 alpha_grad_test=np.zeros(alpha.shape)
@@ -115,50 +123,6 @@ cost_grad_alpha=-np.array([[D4[:,j]*X[:,k] for k in range(p+1)] for j in range(M
 
 f=-(np.log(g)*Y).sum()
 
-####################################################################################
-####################################################################################
-#gradient descent
-
-k_iter=0
-abs_diff=1e8
-while((abs_diff>tol)&(k_iter<k_max)):
-    #hidden layer outputs
-    Z=special.expit(np.dot(X,alpha))
-    #add bias vector to hidden layer 
-    Z=np.column_stack((np.ones(n),np.copy(Z)))
-    #linear combination of hidden layer outputs
-    T=np.dot(Z,beta)
-    #outputs
-    g=softmax_fn(T)
-
-    #compute 
-    temp1=(Y/g)
-    temp2=grad_softmax(T)
-    #Y*(1/g)*dg/dT
-    C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
-
-    #sum over output classes
-    D1=C.sum(axis=1)
-    #sum[Y*(1/g)*dg/dT]*Z
-    #dim (n,K,M): (obs index,class index,hidden layer index)
-    cost_grad_beta=-np.array([[D1[:,k] for k in range(K)]*Z[:,j] for j in range(M)]).transpose()
-
-    #alpha gradient
-    #sum[sum[Y*(1/g)*dg/dT]*beta]
-    D3=np.array([[D1[i,:]*beta[j,:] for j in range(M)] for i in range(n)]).sum(axis=2)
-    #dim (n,p+1,M)
-    cost_grad_alpha=np.array([[D3[:,j]*X[:,k] for k in range(p+1)] for j in range(M)]).transpose()
-
-    beta=beta-eps_beta*grad_beta
-
-    alpha=alpha-eps_alpha*grad_alpha
-
-    J_new=cost_fn(alpha,beta,X,Y,special.expit,softmax_fn)
-    abs_diff=abs(J-J_new)
-    J=J_new
-    k_iter+=1
-#        print k,J
-return theta    
 
 
 ####################################################################################
@@ -166,6 +130,79 @@ return theta
 import numpy as np
 from scipy import special
 import os
+####################################################################################
+####################################################################################
+def NN_fit_grad_descent(k_max,eps_alpha,eps_beta,alpha,beta,X,Y,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+    #gradient descent for fitting a single hidden layer neural network classifier
+    #k_max: maximum number of iterations for gradient descent
+    #eps_alpha: alpha gradient multiplier (assumed to be same for all alpha)
+    #eps_beta: beta gradient multiplier (assumed to be same for all beta)
+    #alpha: np.array of weights for inputs; dim (p+1,M)
+    #beta: np.array of weights for hidden layer; dim (M+1,K)
+    #X: np.array of inputs; dim (n,p) (each of the n rows is a separate observation, p is the number of features)
+    #Y: np.array of outputs; dim (n,K) (K is the number of classes)
+    #activation_fn: activation function
+    #output_fn: output function
+    #grad_activation_fn: gradient of activation function
+    #grad_output_fn: gradient of output function
+
+    #dimension of data
+    #number of rows (observations)
+    n=X.shape[0]   
+    #number of input features 
+    p=X.shape[1]
+    #add bias vector to inputs
+    X=np.column_stack((np.ones(n),np.copy(X)))
+    #number of rows in the dependent variable
+    n_Y=Y.shape[0]
+    #number of classes
+    K=Y.shape[1]
+    #check if X and Y have the same number of observations
+    if(n!=n_Y):
+        print "number of rows in X and Y are not the same"
+        return -9999.
+    #initialize iterator
+    k_iter=0
+    while(k_iter<k_max):
+        #hidden layer outputs
+        Z=activation_fn(np.dot(X,alpha))
+        #add bias vector to hidden layer 
+        Z=np.column_stack((np.ones(n),np.copy(Z)))
+        #number of hidden layers (including bias)
+        M=Z.shape[1]
+
+        #linear combination of hidden layer outputs
+        T=np.dot(Z,beta)
+        #outputs
+        g=output_fn(T)
+
+        #compute 
+        temp1=(Y/g)
+        temp2=grad_output_fn(T)
+        #Y*(1/g)*dg/dT
+        C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
+
+        #sum over output classes
+        D1=C.sum(axis=1)
+        #sum[Y*(1/g)*dg/dT]*Z
+        #dim (n,K,M): (obs index,class index,hidden layer index including bias
+        cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
+
+        #sum[sum[Y*(1/g)*dg/dT]*beta]
+        D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n)]).sum(axis=2)
+        #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
+        grad_act=grad_activation_fn(np.dot(X,alpha))
+        D4=D3*grad_act
+        #dim (n,p+1,M)
+        cost_grad_alpha=-np.array([[D4[:,j]*X[:,k] for k in range(p+1)] for j in range(M-1)]).transpose()
+        k_iter+=1
+
+        #update beta
+        beta=beta-eps_beta*cost_grad_beta.sum(0)
+        #update alpha
+        alpha=alpha-eps_alpha*cost_grad_alpha.sum(0)
+
+    return [alpha,beta]
 ####################################################################################
 ####################################################################################
 def softmax_fn(T):
@@ -295,9 +332,6 @@ def grad_alpha_cost(alpha,beta,X,Y,activation_fn,output_fn,grad_activation_fn,gr
 
     #sum over output classes
     D1=C.sum(axis=1)
-    #sum[Y*(1/g)*dg/dT]*Z
-    #dim (n,K,M): (obs index,class index,hidden layer index including bias
-    cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
 
     #sum[sum[Y*(1/g)*dg/dT]*beta]
     D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n)]).sum(axis=2)
