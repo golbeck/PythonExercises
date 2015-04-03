@@ -206,7 +206,7 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
         y_pred=output_fn(T).argmax(1)+1
         CF=confusion_matrix_multi(y_pred,y_in,K)
         error_rate=CF.diagonal().sum(0)/n
-        print error_rate
+        print epoch_iter, error_rate
 
     return [alpha,beta]
 ####################################################################################
@@ -563,10 +563,10 @@ beta=np.random.normal(size=(M_hidden+1)*K).reshape(M_hidden+1,K)
 
 
 #gradient descent
-epochs=200
+epochs=50
 steps_epoch=X_in.shape[0]/50
-eps_alpha=0.01
-eps_beta=0.01
+eps_alpha=0.02
+eps_beta=0.02
 params=NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 
 
@@ -678,4 +678,4 @@ while(epoch_iter<epochs):
     y_pred=softmax_fn(T).argmax(1)+1
     CF=confusion_matrix_multi(y_pred,y_in,K)
     error_rate=CF.diagonal().sum(0)/n
-    print error_rate
+    print epoch_iter, error_rate
