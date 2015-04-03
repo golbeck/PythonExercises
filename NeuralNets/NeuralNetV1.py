@@ -151,7 +151,7 @@ def confusion_matrix_multi(y_out,y,n_class):
 ####################################################################################
 ####################################################################################    
 pwd_temp=%pwd
-dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -203,8 +203,8 @@ print(cm)
 ####################################################################################  
 ####################################################################################
 ####################################################################################  
-import scipy
-dat=scipy.io.loadmat(dir1+'/ex3data1.mat')
+import scipy.io as sio
+dat=sio.loadmat(dir1+'/ex3data1.mat')
 Y_all=np.array(dat['y'])
 #reshape to 1d np.array
 Y_all=Y_all.ravel()
