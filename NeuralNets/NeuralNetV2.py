@@ -7,6 +7,8 @@ import os
 ####################################################################################
 def NN_fit_grad_descent_V0(k_max,eps_alpha,eps_beta,alpha,beta,X_in,Y,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
     #gradient descent for fitting a single hidden layer neural network classifier
+    #updates the gradient once for each pass through the entire dataset
+
     #k_max: maximum number of iterations for gradient descent
     #eps_alpha: alpha gradient multiplier (assumed to be same for all alpha)
     #eps_beta: beta gradient multiplier (assumed to be same for all beta)
@@ -78,11 +80,12 @@ def NN_fit_grad_descent_V0(k_max,eps_alpha,eps_beta,alpha,beta,X_in,Y,activation
     return [alpha,beta]
 ####################################################################################
 ####################################################################################
-def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+def NN_fit_grad_descent(epochs,n_mini_batch,eps_alpha,eps_beta,alpha,beta,X_in,Y,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
     #gradient descent for fitting a single hidden layer neural network classifier
+    #updates the gradient "n_mini_batch" times for each run through the entire data set
 
-    #epochs: maximum number of iterations for gradient descent
-    #steps_epoch: number of updates to alpha, beta within each epoch
+    #epochs: maximum number of iterations through the entire data set for gradient descent
+    #n_mini_batch: number of updates to alpha, beta within each epoch
     #eps_alpha: alpha gradient multiplier (assumed to be same for all alpha)
     #eps_beta: beta gradient multiplier (assumed to be same for all beta)
     #alpha: np.array of weights for inputs; dim (p+1,M)
@@ -99,8 +102,8 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
     #dimension of data
     #number of rows (observations)
     n=X_in.shape[0]   
-    #number of observations per each step through an epoch
-    n_obs=n/steps_epoch
+    #size of each mini-batch
+    batch_size=n/n_mini_batch
     #number of input features 
     p=X_in.shape[1]
     #add bias vector to inputs
@@ -116,13 +119,13 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
     #initialize iterator
     epoch_iter=0
     while(epoch_iter<epochs):
-        for n_step in range(steps_epoch):
+        for batch_number in range(n_mini_batch):
             #observations used to update alpha, beta
-            obs_index=range(n_step*n_obs,(n_step+1)*n_obs)
+            obs_index=range(batch_number*batch_size,(batch_number+1)*batch_size)
             #hidden layer outputs
             Z=activation_fn(np.dot(X[obs_index,:],alpha))
             #add bias vector to hidden layer 
-            Z=np.column_stack((np.ones(n_obs),np.copy(Z)))
+            Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
             #number of hidden layers (including bias)
             M=Z.shape[1]
 
@@ -144,7 +147,7 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
             cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
 
             #sum[sum[Y*(1/g)*dg/dT]*beta]
-            D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n_obs)]).sum(axis=2)
+            D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(batch_size)]).sum(axis=2)
             #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
             grad_act=grad_activation_fn(np.dot(X[obs_index,:],alpha))
             D4=D3*grad_act
@@ -162,7 +165,7 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
             #hidden layer outputs
             Z=activation_fn(np.dot(X[obs_index,:],alpha))
             #add bias vector to hidden layer 
-            Z=np.column_stack((np.ones(n_obs),np.copy(Z)))
+            Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
             #number of hidden layers (including bias)
             M=Z.shape[1]
 
@@ -184,7 +187,7 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
             cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
 
             #sum[sum[Y*(1/g)*dg/dT]*beta]
-            D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n_obs)]).sum(axis=2)
+            D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(batch_size)]).sum(axis=2)
             #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
             grad_act=grad_activation_fn(np.dot(X[obs_index,:],alpha))
             D4=D3*grad_act
@@ -204,6 +207,153 @@ def NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,
         T=np.dot(Z,beta)
         #convert to class number
         y_pred=output_fn(T).argmax(1)+1
+        CF=confusion_matrix_multi(y_pred,y_in,K)
+        error_rate=CF.diagonal().sum(0)/n
+        print epoch_iter, error_rate
+
+    return [alpha,beta]
+
+####################################################################################
+####################################################################################
+def NN_fit_stoch_grad_descentV0(rng_state,epochs,batch_size,eps_alpha,eps_beta,alpha,beta,X_in,Y,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+    #gradient descent for fitting a single hidden layer neural network classifier
+    #updates the gradient "n_mini_batch" times for each run through the entire data set
+
+    #rng_state: state of the RNG for reproducibility
+    #epochs: maximum number of iterations through the entire data set for gradient descent
+    #batch_size: number of observations used to update alpha and beta
+    #eps_alpha: alpha gradient multiplier (assumed to be same for all alpha)
+    #eps_beta: beta gradient multiplier (assumed to be same for all beta)
+    #alpha: np.array of weights for inputs; dim (p+1,M)
+    #beta: np.array of weights for hidden layer; dim (M+1,K)
+    #X_in: np.array of inputs; dim (n,p) (each of the n rows is a separate observation, p is the number of features)
+    #Y: np.array of outputs; dim (n,K) (K is the number of classes)
+    #activation_fn: activation function
+    #output_fn: output function
+    #grad_activation_fn: gradient of activation function
+    #grad_output_fn: gradient of output function
+
+    #start at the given random state supplied by the user (for debugging)
+    np.random.set_state(rng_state)
+    #dimension of data
+    #number of rows (observations)
+    n=X_in.shape[0]   
+    #number of observations per each step through an epoch
+    n_mini_batch=n/batch_size
+    #number of input features 
+    p=X_in.shape[1]
+    #add bias vector to inputs
+    X=np.column_stack((np.ones(n),np.copy(X_in)))
+    #number of rows in the dependent variable
+    n_Y=Y.shape[0]
+    #number of classes
+    K=Y.shape[1]
+    #check if X and Y have the same number of observations
+    if(n!=n_Y):
+        print "number of rows in X and Y are not the same"
+        return -9999.
+    #initialize iterator
+    epoch_iter=0
+    while(epoch_iter<epochs):
+
+        #randomly permuate the features and outputs using the same shuffle for each epoch
+        np.random.shuffle(X)
+        np.random.set_state(rng_state)
+        np.random.shuffle(Y)        
+        #update rng state after shuffling in order to apply the same permutation to both X_in and Y
+        rng_state = np.random.get_state()
+
+        #iterate through the entire observation set, updating the gradient via mini-batches
+        for batch_number in range(n_mini_batch):
+            #observations used to update alpha, beta
+            obs_index=range(batch_number*batch_size,(batch_number+1)*batch_size)
+            #hidden layer outputs
+            Z=activation_fn(np.dot(X[obs_index,:],alpha))
+            #add bias vector to hidden layer 
+            Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
+            #number of hidden layers (including bias)
+            M=Z.shape[1]
+
+            #linear combination of hidden layer outputs
+            T=np.dot(Z,beta)
+            #outputs
+            g=output_fn(T)
+
+            #compute 
+            temp1=(Y[obs_index,:]/g)
+            temp2=grad_output_fn(T)
+            #Y*(1/g)*dg/dT
+            C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
+
+            #sum over output classes
+            D1=C.sum(axis=1)
+            #sum[Y*(1/g)*dg/dT]*Z
+            #dim (n,M,K): (obs index,hidden layer index including bias,class index)
+            cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
+
+            #sum[sum[Y*(1/g)*dg/dT]*beta]
+            D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(batch_size)]).sum(axis=2)
+            #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
+            grad_act=grad_activation_fn(np.dot(X[obs_index,:],alpha))
+            D4=D3*grad_act
+            #dim (n,p+1,M)
+            cost_grad_alpha=-np.array([[D4[:,j]*X[obs_index,k] for k in range(p+1)] for j in range(M-1)]).transpose()
+
+            #update beta
+            beta=beta-eps_beta*cost_grad_beta.sum(0)
+            #update alpha
+            alpha=alpha-eps_alpha*cost_grad_alpha.sum(0)
+        #iterate over the remaining observations if the whole data set has not been pass through
+        if(np.max(obs_index)<n-1):
+            #observations used to update alpha, beta
+            obs_index=range(np.max(obs_index),n)
+            #hidden layer outputs
+            Z=activation_fn(np.dot(X[obs_index,:],alpha))
+            #add bias vector to hidden layer 
+            Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
+            #number of hidden layers (including bias)
+            M=Z.shape[1]
+
+            #linear combination of hidden layer outputs
+            T=np.dot(Z,beta)
+            #outputs
+            g=output_fn(T)
+
+            #compute 
+            temp1=(Y[obs_index,:]/g)
+            temp2=grad_output_fn(T)
+            #Y*(1/g)*dg/dT
+            C=np.array([[temp1[:,k]*temp2[:,k,j] for k in range(K)] for j in range(K)]).transpose()
+
+            #sum over output classes
+            D1=C.sum(axis=1)
+            #sum[Y*(1/g)*dg/dT]*Z
+            #dim (n,M,K): (obs index,hidden layer index including bias,class index)
+            cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
+
+            #sum[sum[Y*(1/g)*dg/dT]*beta]
+            D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(batch_size)]).sum(axis=2)
+            #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
+            grad_act=grad_activation_fn(np.dot(X[obs_index,:],alpha))
+            D4=D3*grad_act
+            #dim (n,p+1,M)
+            cost_grad_alpha=-np.array([[D4[:,j]*X[obs_index,k] for k in range(p+1)] for j in range(M-1)]).transpose()
+
+            #update beta
+            beta=beta-eps_beta*cost_grad_beta.sum(0)
+            #update alpha
+            alpha=alpha-eps_alpha*cost_grad_alpha.sum(0)
+
+        #update epoch iterator
+        epoch_iter+=1
+        #predict classes and compute error rate
+        Z=activation_fn(np.dot(X,alpha))
+        Z=np.column_stack((np.ones(n),np.copy(Z)))
+        T=np.dot(Z,beta)
+        #convert to class number
+        y_pred=output_fn(T).argmax(1)+1
+        #convert class matrix to array of class labels (starting at 1) for use in confusion matrix
+        y_in=Y.argmax(1)+1
         CF=confusion_matrix_multi(y_pred,y_in,K)
         error_rate=CF.diagonal().sum(0)/n
         print epoch_iter, error_rate
@@ -474,10 +624,10 @@ beta=np.random.normal(size=(M_hidden+1)*K).reshape(M_hidden+1,K)
 
 #test gradient descent
 epochs=200
-steps_epoch=X_in.shape[0]/3
+n_mini_batch=X_in.shape[0]/3
 eps_alpha=0.01
 eps_beta=0.01
-params=NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+params=NN_fit_grad_descent(epochs,n_mini_batch,eps_alpha,eps_beta,alpha,beta,X_in,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 
 #test negative log likelihood function and alpha and beta gradients
 cost_fn(alpha,beta,X_in,Y,special.expit,softmax_fn)
@@ -533,7 +683,7 @@ print cost_grad_beta0.sum(0)
 ####################################################################################
 ####################################################################################  
 #load data
-pwd_temp=%pwd
+pwd_temp=os.getcwd()
 dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
@@ -564,11 +714,61 @@ beta=np.random.normal(size=(M_hidden+1)*K).reshape(M_hidden+1,K)
 
 #gradient descent
 epochs=50
-steps_epoch=X_in.shape[0]/50
+n_mini_batch=X_in.shape[0]/50
 eps_alpha=0.02
 eps_beta=0.02
-params=NN_fit_grad_descent(epochs,steps_epoch,eps_alpha,eps_beta,alpha,beta,X_in,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+# params=NN_fit_grad_descent(epochs,n_mini_batch,eps_alpha,eps_beta,alpha,beta,X_in,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 
+
+
+####################################################################################  
+####################################################################################
+####################################################################################  
+####################################################################################
+####################################################################################  
+#load data
+pwd_temp=os.getcwd()
+dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+if pwd_temp!=dir1:
+    os.chdir(dir1)
+dir1=dir1+'/data' 
+import scipy.io as sio
+dat=sio.loadmat(dir1+'/ex3data1.mat')
+X_in=np.array(dat['X'])
+y_in=np.array(dat['y'])
+#create a matrix with 0-1 class labels
+K=y_in.max()
+Y=np.zeros((y_in.shape[0],K))
+for i in range(y_in.shape[0]):
+    Y[i,y_in[i]-1]=1
+p=X_in.shape[1]
+
+M_hidden=20   #not including bias
+#generate random values for the model parameters
+#dim (p+1,M-1), (#features including input bias,#hidden layers not including bias)
+alpha=np.random.normal(size=(p+1)*M_hidden).reshape(p+1,M_hidden)
+#dim (M,K), (#hidden layers including bias hidden layer,#classes)
+beta=np.random.normal(size=(M_hidden+1)*K).reshape(M_hidden+1,K)
+
+#stochastic gradient descent
+rng_state = np.random.get_state()
+eps_alpha=0.02
+eps_beta=0.02
+batch_size=50
+epochs=3
+params=NN_fit_stoch_grad_descent(rng_state,epochs,batch_size,eps_alpha,eps_beta,alpha,beta,X_in,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+
+
+####################################################################################  
+####################################################################################
+####################################################################################  
+####################################################################################
+####################################################################################  
+#randomly permuate the input data
+rng_state = np.random.get_state()
+np.random.shuffle(X_in)
+np.random.set_state(rng_state)
+np.random.shuffle(Y)
 
 #convert class matrix to array of class labels (starting at 1) for use in confusion matrix
 y_in=Y.argmax(1)+1
@@ -576,7 +776,7 @@ y_in=Y.argmax(1)+1
 #number of rows (observations)
 n=X_in.shape[0]   
 #number of observations per each step through an epoch
-n_obs=n/steps_epoch
+n_mini_batch=n/batch_size
 #number of input features 
 p=X_in.shape[1]
 #add bias vector to inputs
@@ -588,13 +788,13 @@ K=Y.shape[1]
 #initialize iterator
 epoch_iter=0
 while(epoch_iter<epochs):
-    for n_step in range(steps_epoch):
+    for batch_number in range(n_mini_batch):
         #observations used to update alpha, beta
-        obs_index=range(n_step*n_obs,(n_step+1)*n_obs)
+        obs_index=range(batch_number*batch_size,(batch_number+1)*batch_size)
         #hidden layer outputs
         Z=special.expit(np.dot(X[obs_index,:],alpha))
         #add bias vector to hidden layer 
-        Z=np.column_stack((np.ones(n_obs),np.copy(Z)))
+        Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
         #number of hidden layers (including bias)
         M=Z.shape[1]
 
@@ -616,7 +816,7 @@ while(epoch_iter<epochs):
         cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
 
         #sum[sum[Y*(1/g)*dg/dT]*beta]
-        D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n_obs)]).sum(axis=2)
+        D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(batch_size)]).sum(axis=2)
         #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
         grad_act=grad_sigmoid(np.dot(X[obs_index,:],alpha))
         D4=D3*grad_act
@@ -627,6 +827,15 @@ while(epoch_iter<epochs):
         beta=beta-eps_beta*cost_grad_beta.sum(0)
         #update alpha
         alpha=alpha-eps_alpha*cost_grad_alpha.sum(0)
+         #predict classes and compute error rate
+        Z=special.expit(np.dot(X,alpha))
+        Z=np.column_stack((np.ones(n),np.copy(Z)))
+        T=np.dot(Z,beta)
+        #convert to class number
+        y_pred=softmax_fn(T).argmax(1)+1
+        CF=confusion_matrix_multi(y_pred,y_in,K)
+        error_rate=CF.diagonal().sum(0)/n
+        print epoch_iter, batch_number, error_rate 
     #iterate over the remaining observations if the whole data set has not been pass through
     if(np.max(obs_index)<n-1):
         #observations used to update alpha, beta
@@ -634,7 +843,7 @@ while(epoch_iter<epochs):
         #hidden layer outputs
         Z=special.expit(np.dot(X[obs_index,:],alpha))
         #add bias vector to hidden layer 
-        Z=np.column_stack((np.ones(n_obs),np.copy(Z)))
+        Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
         #number of hidden layers (including bias)
         M=Z.shape[1]
 
@@ -656,7 +865,7 @@ while(epoch_iter<epochs):
         cost_grad_beta=-np.array([[Z[:,j] for j in range(M)]*D1[:,k] for k in range(K)]).transpose()
 
         #sum[sum[Y*(1/g)*dg/dT]*beta]
-        D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(n_obs)]).sum(axis=2)
+        D3=np.array([[D1[i,:]*beta[j,:] for j in range(1,M)] for i in range(batch_size)]).sum(axis=2)
         #sum[sum[Y*(1/g)*dg/dT]*beta]*dZ/d(X*alpha)
         grad_act=grad_sigmoid(np.dot(X[obs_index,:],alpha))
         D4=D3*grad_act
