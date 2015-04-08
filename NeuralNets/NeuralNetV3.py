@@ -453,31 +453,38 @@ beta=np.random.normal(size=(M_hidden+1)*K).reshape(M_hidden+1,K)
 eps_alpha=0.02
 eps_beta=0.02
 #number of observations used in each gradient update
-batch_size=10
+batch_size=500
 #number of complete iterations through training data set
-epochs=10
-#fraction of data used in training
-train_frac=0.9
+epochs=2
 
 #total number of obs in data set
 n=X.shape[0]
+
+####################################################################################
+####################################################################################
+#k-fold cross validation
+k_folds=10
+#fraction of data used in training
+train_frac=1.0-1.0/np.float(k_folds)
 #training set size
 n_train=np.int(n*train_frac)
 #test set size
 n_test=n-n_train
-#test set indices
-test_indices=range(0,n_test)
-#training set indices
-train_indices=range(n_test,n_train)
+error_rate=np.zeros(k_folds)
+for i_fold in range(k_folds):
+    #test set indices
+    test_indices=range(i_fold*n_test,(i_fold+1)*n_test)
+    #training set indices
+    train_indices=range(0,i_fold*n_test)+range((i_fold+1)*n_test,n)
 
-#train model
-params=NN_fit_stoch_grad_descentV0(rng_state,epochs,batch_size,eps_alpha,eps_beta,alpha,beta,X[train_indices,:],Y[train_indices,:],special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+    #train model
+    params=NN_fit_stoch_grad_descentV0(rng_state,epochs,batch_size,eps_alpha,eps_beta,alpha,beta,X[train_indices,:],Y[train_indices,:],special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 
-#used model on test set
-Y_pred=NN_classifier(params[0],params[1],X[test_indices,:],special.expit,softmax_fn)
-y_pred=Y_pred.argmax(1)+1
-#convert class matrix to array of class labels (starting at 1) for use in confusion matrix
-y_dat=Y[test_indices,:].argmax(1)+1
-CF=confusion_matrix_multi(y_pred,y_dat,K)
-error_rate=CF.diagonal().sum(0)/n_test
-print error_rate
+    #used model on test set
+    Y_pred=NN_classifier(params[0],params[1],X[test_indices,:],special.expit,softmax_fn)
+    y_pred=Y_pred.argmax(1)+1
+    #convert class matrix to array of class labels (starting at 1) for use in confusion matrix
+    y_dat=Y[test_indices,:].argmax(1)+1
+    CF=confusion_matrix_multi(y_pred,y_dat,K)
+    error_rate[i_fold]=CF.diagonal().sum(0)/n_test
+print error_rate.mean()
