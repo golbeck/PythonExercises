@@ -645,8 +645,7 @@ def NN_CV(k_folds,rng_state,epochs,batch_size,eps_alpha,eps_beta,lr_frac,alpha,b
 
 #load data
 pwd_temp=os.getcwd()
-#dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
-dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -729,7 +728,7 @@ k_folds=10
 #parameters selected from CV
 eps_alpha=0.01
 eps_beta=0.01
-M_hidden=256
+M_hidden=50
 #learning rate fraction
 lr_frac=0.9
 #number of observations used in each gradient update
@@ -743,6 +742,6 @@ alpha=np.random.normal(size=(p+1)*M_hidden).reshape(p+1,M_hidden)
 beta=np.random.normal(size=(M_hidden+1)*K).reshape(M_hidden+1,K)
 # accuracy_rate=NN_CV(k_folds,rng_state,epochs,batch_size,eps_alpha,eps_beta,lr_frac,alpha,beta,X,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 # print accuracy_rate
-mom_rate=0.8
+mom_rate=0.85
 params=NN_fit_stoch_grad_descent_mom(rng_state,epochs,batch_size,eps_alpha,eps_beta,mom_rate,alpha,beta,X,Y,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 print params[0]
