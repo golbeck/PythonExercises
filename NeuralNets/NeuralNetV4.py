@@ -302,19 +302,68 @@ def NN_fit_stoch_grad_descentV0(rng_state,epochs,batch_size,eps_alpha,eps_beta,l
         eps_alpha=lr_frac*eps_alpha
         eps_beta=lr_frac*eps_beta
 
+        #list of gradients for saving intermediate results
+
         #iterate through the entire observation set, updating the gradient via mini-batches
         for batch_number in range(n_mini_batch):
+            #initialize gradient array
+            grad=[]
+            #input to first layer
+            layer=0
             #observations used to update alpha, beta
             obs_index=range(batch_number*batch_size,(batch_number+1)*batch_size)
+            #linear combination of inputs
+            T=np.dot(X[obs_index,:],alpha[layer][:,:])
+            #gradient of activation function with respect to T
+            grad_act=grad_activation_fn(T)
             #hidden layer outputs
-            Z=activation_fn(np.dot(X[obs_index,:],alpha))
+            Z=activation_fn(T)
+            #add bias vector to hidden layer; dim (batch_size,M[0]+1)
+            Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
+            #dim (batch_size,M[1],M[0],p+1)
+            C=np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*X[:,r] for s in range(M[layer+1])] for q in range(M[layer])] for r in range(p+1)]).transpose()
+            #gradient update
+            grad.append(C)
+
+
+            # for layer in range(1,n_layers-1):
+            #     #linear combination of inputs
+            #     T=np.dot(Z,alpha[layer,:,:])
+            #     #gradient of activation function with respect to T
+            #     grad_act=grad_activation_fn(T)
+            #     #dim (batch_size,M[layer],M[layer-1],p+1)
+            #     C=np.array([[[alpha[layer+1,q+1,s]*grad_act[:,q]*Z[:,r] for s in range(M[layer+1])] for q in range(M[layer])] for r in range(M[layer]+1)]).transpose()
+            #     #gradient update
+            #     grad.append(C)
+                
+            #     #hidden layer outputs
+            #     Z=activation_fn(T)
+            #     #add bias vector to hidden layer 
+            #     Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
+
+            #2nd layer
+            layer=n_layers
+            #linear combination of inputs
+            T=np.dot(Z,alpha[layer][:,:])
+            #gradient of activation function with respect to T
+            grad_act=grad_activation_fn(T)
+            #dim (batch_size,M[layer],M[layer-1],p+1)
+            C=np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*Z[:,r] for s in range(K)] for q in range(M[layer])] for r in range(M[layer]+1)]).transpose()
+            #gradient update for current layer
+            grad.append(C)
+            #gradient update for earlier layers
+            C=np.array([[[[alpha[layer+1][s+1,j]*grad_act[:,s]*grad[0][:,s,p,q] for j in range(K)] for s in range(M[layer])] for p in range(M[layer])] for q in range(p+1)]).transpose()
+            grad[0]=C.sum(2)
+            
+            #hidden layer outputs
+            Z=activation_fn(T)
             #add bias vector to hidden layer 
             Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
-            #number of hidden layers (including bias)
-            M=Z.shape[1]
 
+            #output of last hidden layer
+            layer=2
             #linear combination of hidden layer outputs
-            T=np.dot(Z,beta)
+            T=np.dot(Z,alpha[layer][:,:])
             #outputs
             g=output_fn(T)
 
