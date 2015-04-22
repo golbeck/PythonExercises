@@ -51,14 +51,17 @@ def grad_softmax(T):
 ####################################################################################
 ####################################################################################
 
-
+eps_alpha=0.1
 n=30
 p=5
 X_in=np.random.normal(size=n*p).reshape(n,p)
 K=3
 Y_in=np.random.normal(size=n*K).reshape(n,K)
-M=np.array([10,12])
+#number of neurons in each hidden layer
+M=np.array([10,12,14,15])
 n_layers=M.shape[0]
+#append the number of output units to M
+M=np.append(M,K)
 alpha=[]
 #input parameters for first layer activation function
 alpha.append(np.random.normal(size=(p+1)*M[0]).reshape(p+1,M[0]))
@@ -106,6 +109,7 @@ while(epoch_iter<epochs):
 
     #iterate through the entire observation set, updating the gradient via mini-batches
     for batch_number in range(n_mini_batch):
+    
         #initialize gradient list
         grad=[]
         ##############################################################################################
@@ -122,33 +126,39 @@ while(epoch_iter<epochs):
         #add bias vector to hidden layer; dim (batch_size,M[0]+1)
         Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
         #dim (batch_size,M[1],p+1,M[0])
-        C=np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*X[obs_index,r] for s in range(M[layer+1])] for r in range(p+1)] for q in range(M[layer])]).transpose()
+        C=np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*X[obs_index,r] for s in range(M[layer+1])] 
+            for r in range(p+1)] for q in range(M[layer])]).transpose()
         #gradient update
         grad.append(C)
 
-        ##############################################################################################
-        #2nd layer
-        layer=n_layers-1
-        #linear combination of inputs
-        T=np.dot(Z,alpha[layer][:,:])
-        #gradient of activation function with respect to T
-        grad_act=grad_sigmoid(T)
-        #dim (batch_size,K,M[layer-1]+1,M[layer])
-        C=np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*Z[:,r] for s in range(K)] for r in range(M[layer-1]+1)] for q in range(M[layer])]).transpose()
-        #gradient update for current layer
-        grad.append(C)
-        #gradient update for earlier layers
-        C=np.array([[[[alpha[layer+1][s+1,j]*grad_act[:,s]*grad[0][:,s,r,q] for j in range(K)] for s in range(M[layer])] for r in range(p+1)] for q in range(M[layer-1])]).transpose()
-        grad[0]=C.sum(2)
+        for layer in range(1,n_layers):
+            #linear combination of inputs
+            T=np.dot(Z,alpha[layer][:,:])
+            #gradient of activation function with respect to T
+            grad_act=grad_sigmoid(T)
+            #dim (batch_size,K,M[layer-1]+1,M[layer])
+            C=np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*Z[:,r] for s in range(M[layer+1])] 
+                for r in range(M[layer-1]+1)] for q in range(M[layer])]).transpose()
+            #gradient update for current layer
+            grad.append(C)
+            #gradient update for input parameters
+            C=np.array([[[[alpha[layer+1][s+1,j]*grad_act[:,s]*grad[0][:,s,r,q] for j in range(M[layer+1])] 
+                for s in range(M[layer])] for r in range(p+1)] for q in range(M[0])]).transpose()
+            grad[0]=C.sum(2)
+            if layer>1:
+                for h in range(1,layer):
+                    C=np.array([[[[alpha[layer+1][s+1,j]*grad_act[:,s]*grad[h][:,s,r,q] for j in range(M[layer+1])] 
+                        for s in range(M[layer])] for r in range(M[h-1]+1)] for q in range(M[h])]).transpose()
+                    grad[h]=C.sum(2)
 
-        #hidden layer outputs
-        Z=special.expit(T)
-        #add bias vector to hidden layer 
-        Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
+            #hidden layer outputs
+            Z=special.expit(T)
+            #add bias vector to hidden layer 
+            Z=np.column_stack((np.ones(batch_size),np.copy(Z)))
 
         ##############################################################################################
         #output of last hidden layer
-        layer=2
+        layer=n_layers
         #linear combination of hidden layer outputs
         T=np.dot(Z,alpha[layer][:,:])
         #outputs
@@ -165,13 +175,16 @@ while(epoch_iter<epochs):
         grad.append(C)
 
         #gradient update for previous layers
-        C=np.array([[[C0[:,j]*grad[0][:,j,r,q] for j in range(K)] for r in range(p+1)] for q in range(M[layer-2])]).transpose()
+        C=np.array([[[C0[:,j]*grad[0][:,j,r,q] for j in range(K)] 
+            for r in range(p+1)] for q in range(M[0])]).transpose()
         grad[0]=C.sum(1)
 
-        C=np.array([[[C0[:,j]*grad[1][:,j,r,q] for j in range(K)] for r in range(M[layer-2]+1)] for q in range(M[layer-1])]).transpose()
-        grad[1]=C.sum(1)
+        for h in range(1,n_layers):
+            C=np.array([[[C0[:,j]*grad[h][:,j,r,q] for j in range(K)] 
+                for r in range(M[h-1]+1)] for q in range(M[h])]).transpose()
+            grad[h]=C.sum(1)
 
 
-        for i in range(len(M)+1):
+        for i in range(n_layers+1):
             alpha[i]=alpha[i]-eps_alpha*(-grad[i].sum(0))
 
