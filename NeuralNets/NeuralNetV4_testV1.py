@@ -32,8 +32,9 @@ def NN_classifier(alpha,beta,X_in,activation_fn,output_fn):
     return g
 ####################################################################################
 ####################################################################################
-def cost_fn(alpha,X_in,Y,activation_fn,output_fn):
+def cost_fn(eps_penalty,alpha,X_in,Y,activation_fn,output_fn):
     #negative log likelihood function for classification
+    #eps_penalty: parameter for L2 regularization penalty term
     #alpha: np.array of weights for inputs; dim (p+1,M)
     #X_in: np.array of inputs; dim (n,p+1) (each of the n rows is a separate observation, p is the number of features)
     #Y: np.array of outputs; dim (n,K) (K is the number of classes)
@@ -68,8 +69,10 @@ def cost_fn(alpha,X_in,Y,activation_fn,output_fn):
     #outputs
     g=output_fn(T)
 
+    #L2 regularization penalty term
+    L2=0.5*eps_penalty*np.array([(alpha[i]**2).sum() for i in range(len(alpha))]).sum()
     #generate negative log likelihood function
-    f=-(np.log(g)*Y).sum()
+    f=-(np.log(g)*Y).sum()+L2
     return f
 ####################################################################################
 ####################################################################################
@@ -154,6 +157,11 @@ dir1=dir1+'/data'
 import scipy.io as sio
 dat=sio.loadmat(dir1+'/ex3data1.mat')
 X_in=np.array(dat['X'])
+
+# #preprocessing
+# from sklearn import preprocessing
+# X_in=preprocessing.scale(X_in)
+
 y_mat=np.array(dat['y'])
 #create a matrix with 0-1 class labels
 K=y_mat.max()
@@ -181,6 +189,7 @@ n=X_in.shape[0]
 #####################################################################################
 #####################################################################################
 eps_alpha=0.01
+eps_penalty=0.001
 # n=30
 # p=5
 # X_in=np.random.normal(size=n*p).reshape(n,p)
@@ -193,17 +202,20 @@ n_layers=M.shape[0]
 M=np.append(M,K)
 #list of network parameters
 alpha=[]
+weight_L=-4*np.sqrt(6./(p+M[0]))
+weight_H=4*np.sqrt(6./(p+M[0]))
 #input parameters for first layer activation function
-# alpha.append(np.random.uniform(low=-0.5,high=0.5,size=(p+1)*M[0]).reshape(p+1,M[0]))
-# #parameters for inputs to all other hidden layer activation functions and the output function (K units)
-# for layer in range(1,n_layers+1):
-#     alpha.append(np.random.uniform(low=-0.5,high=0.5,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
-
-# #input parameters for first layer activation function
-alpha.append(np.random.normal(size=(p+1)*M[0]).reshape(p+1,M[0]))
+alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(p+1)*M[0]).reshape(p+1,M[0]))
 #parameters for inputs to all other hidden layer activation functions and the output function (K units)
 for layer in range(1,n_layers+1):
-    alpha.append(np.random.normal(size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
+    alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
+
+alpha_init=np.copy(alpha)
+# #input parameters for first layer activation function
+# alpha.append(np.random.normal(size=(p+1)*M[0]).reshape(p+1,M[0]))
+# #parameters for inputs to all other hidden layer activation functions and the output function (K units)
+# for layer in range(1,n_layers+1):
+#     alpha.append(np.random.normal(size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
 
 rng_state = np.random.get_state()  
 #start at the given random state supplied by the user (for debugging)
@@ -212,12 +224,11 @@ np.random.set_state(rng_state)
 np.random.shuffle(X_in)
 np.random.set_state(rng_state)
 np.random.shuffle(Y_in)      
-rng_state = np.random.get_state()  
 
 #number of observations used in each gradient update
-batch_size=500
+batch_size=1000
 #number of complete iterations through training data set
-epochs=5
+epochs=10
 n_mini_batch=n/batch_size
 #add bias vector to inputs
 X_in=np.column_stack((np.ones(n),X_in))
@@ -226,7 +237,7 @@ n_Y=Y_in.shape[0]
 #number of classes
 K=Y_in.shape[1]
 
-print alpha[0][1,1], alpha[1][2,2]
+print [(alpha[h].min(), alpha[h].max()) for h in range(len(alpha))]
 
 ##################################################################################################
 ##################################################################################################
@@ -239,12 +250,12 @@ print alpha[0][1,1], alpha[1][2,2]
 epoch_iter=0
 while(epoch_iter<epochs):
     print "epoch iteration %s" %epoch_iter
+    #save rng state to apply the same permutation to both X and Y
+    rng_state = np.random.get_state()
     #randomly permuate the features and outputs using the same shuffle for each epoch
     np.random.shuffle(X_in)
     np.random.set_state(rng_state)
     np.random.shuffle(Y_in)        
-    #update rng state after shuffling in order to apply the same permutation to both X and Y
-    rng_state = np.random.get_state()
 
     #iterate through the entire observation set, updating the gradient via mini-batches
     for batch_number in range(n_mini_batch):
@@ -257,7 +268,7 @@ while(epoch_iter<epochs):
         #observations used to update alpha, beta        
         obs_index=range(batch_number*batch_size,(batch_number+1)*batch_size)
         #linear combination of inputs
-        T=np.dot(X_in[obs_index,:],alpha[layer][:,:])
+        T=np.dot(X_in[obs_index,:],alpha[layer])
         #gradient of activation function with respect to T
         grad_act=grad_sigmoid(T)
         #hidden layer outputs
@@ -271,7 +282,7 @@ while(epoch_iter<epochs):
         for layer in range(1,n_layers):
             print "layer %s" %layer
             #linear combination of inputs
-            T=np.dot(Z,alpha[layer][:,:])
+            T=np.dot(Z,alpha[layer])
             #gradient of activation function with respect to T
             grad_act=grad_sigmoid(T)
             #dim (batch_size,K,M[layer-1]+1,M[layer])
@@ -294,7 +305,7 @@ while(epoch_iter<epochs):
         #output of last hidden layer
         layer=n_layers
         #linear combination of hidden layer outputs
-        T=np.dot(Z,alpha[layer][:,:])
+        T=np.dot(Z,alpha[layer])
         #outputs
         g=softmax_fn(T)
 
@@ -315,9 +326,14 @@ while(epoch_iter<epochs):
                 for r in range(M[h-1]+1)] for q in range(M[h])]).transpose().sum(1).sum(0)
 
         for i in range(n_layers+1):
-            alpha[i]=alpha[i]-eps_alpha*(-grad[i].sum(0))
+            #L2 regularization term
+            M_temp=alpha[i].shape[0]
+            M_range=range(1,M_temp)
+            alpha[i][M_range,:]=alpha[i][M_range,:]-eps_alpha*(-grad[i][M_range,:]+eps_penalty*alpha[i][M_range,:])
+            #no regularization for bias parameters
+            alpha[i][0,:]=alpha[i][0,:]-eps_alpha*(-grad[i][0,:])
 
-        print alpha[0][1,1], alpha[1][2,2]
+        print [(alpha[h].min(), alpha[h].max()) for h in range(len(alpha))]
 
     #update epoch iteration
     epoch_iter+=1
@@ -326,7 +342,7 @@ while(epoch_iter<epochs):
     #predict classes and compute accuracy rate
     layer=0
     #linear combination of inputs
-    T=np.dot(X_in,alpha[layer][:,:])
+    T=np.dot(X_in,alpha[layer])
     #hidden layer outputs
     Z=special.expit(T)
     #add bias vector to hidden layer; dim (batch_size,M[0]+1)
@@ -334,7 +350,7 @@ while(epoch_iter<epochs):
 
     for layer in range(1,n_layers):
         #linear combination of inputs
-        T=np.dot(Z,alpha[layer][:,:])
+        T=np.dot(Z,alpha[layer])
         #hidden layer outputs
         Z=special.expit(T)
         #add bias vector to hidden layer 
@@ -343,7 +359,7 @@ while(epoch_iter<epochs):
     #output of last hidden layer
     layer=n_layers
     #linear combination of hidden layer outputs
-    T=np.dot(Z,alpha[layer][:,:])
+    T=np.dot(Z,alpha[layer])
     #convert to class number
     y_pred=softmax_fn(T).argmax(1)+1
     #convert class matrix to array of class labels (starting at 1) for use in confusion matrix
@@ -352,8 +368,9 @@ while(epoch_iter<epochs):
     accuracy=CF.diagonal().sum(0)/n
     print "observation (20,200,2000): %s" %y_dat[[19,199,1999]]
     print "prediction (20,200,2000): %s" %y_pred[[19,199,1999]]
+    print softmax_fn(T)[[19,199,1999],:]
     print "accuracy rate %s" %accuracy
-    cost=cost_fn(alpha,X_in,Y_in,special.expit,softmax_fn)
+    cost=cost_fn(eps_penalty,alpha,X_in,Y_in,special.expit,softmax_fn)
     print cost
 
 
@@ -370,7 +387,8 @@ while(epoch_iter<epochs):
 # obs_index=range(batch_number*batch_size,(batch_number+1)*batch_size)
 # #test negative log likelihood function and alpha and beta gradients
 # #test alpha gradient
-# eps_alpha=0.001
+# eps_alpha=0.01
+# eps_penalty=0.01
 # alpha_grad_test=[]
 # for h in range(len(alpha)):
 #     print h
@@ -383,8 +401,8 @@ while(epoch_iter<epochs):
 #             alpha_u[h][i,j]=alpha_u[h][i,j]+eps_alpha
 #             alpha_d[h]=np.copy(alpha[h])
 #             alpha_d[h][i,j]=alpha_d[h][i,j]-eps_alpha
-#             alpha_grad_test[h][i,j]=(cost_fn(alpha_u,X_in[obs_index,:],Y_in[obs_index,:],special.expit,softmax_fn)
-#                 -cost_fn(alpha_d,X_in[obs_index,:],Y_in[obs_index,:],special.expit,softmax_fn))/(2*eps_alpha)
+#             alpha_grad_test[h][i,j]=(cost_fn(eps_penalty,alpha_u,X_in[obs_index,:],Y_in[obs_index,:],special.expit,softmax_fn)
+#                 -cost_fn(eps_penalty,alpha_d,X_in[obs_index,:],Y_in[obs_index,:],special.expit,softmax_fn))/(2*eps_alpha)
 # print alpha_grad_test
 
 
@@ -450,7 +468,9 @@ while(epoch_iter<epochs):
 # #gradient update for previous layers
 # grad[0]=np.array([[[C0[:,j]*grad[0][:,j,r,q] for j in range(K)] 
 #     for r in range(p+1)] for q in range(M[0])]).transpose().sum(1).sum(0)
+# grad[0]-=eps_penalty*alpha[0]
 
 # for h in range(1,n_layers):
 #     grad[h]=np.array([[[C0[:,j]*grad[h][:,j,r,q] for j in range(K)] 
 #         for r in range(M[h-1]+1)] for q in range(M[h])]).transpose().sum(1).sum(0)
+#     grad[h]-=eps_penalty*alpha[h]
