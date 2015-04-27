@@ -149,8 +149,8 @@ def confusion_matrix_multi(y_out,y,n_class):
 
 #load data
 pwd_temp=os.getcwd()
-dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
-# dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+# dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -189,14 +189,14 @@ n=X_in.shape[0]
 #####################################################################################
 #####################################################################################
 eps_alpha=0.01
-eps_penalty=0.001
+eps_penalty=0.01
 # n=30
 # p=5
 # X_in=np.random.normal(size=n*p).reshape(n,p)
 # K=3
 # Y_in=np.random.normal(size=n*K).reshape(n,K)
 #number of neurons in each hidden layer
-M=np.array([5,5])
+M=np.array([10,10])
 n_layers=M.shape[0]
 #append the number of output units to M
 M=np.append(M,K)
@@ -226,9 +226,9 @@ np.random.set_state(rng_state)
 np.random.shuffle(Y_in)      
 
 #number of observations used in each gradient update
-batch_size=1000
+batch_size=500
 #number of complete iterations through training data set
-epochs=10
+epochs=200
 n_mini_batch=n/batch_size
 #add bias vector to inputs
 X_in=np.column_stack((np.ones(n),X_in))

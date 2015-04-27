@@ -6,29 +6,34 @@ import os
 
 ####################################################################################
 ####################################################################################
-def NN_classifier(alpha,beta,X_in,activation_fn,output_fn):
-    #class prediction for a single hidden layer neural network classifier
+def NN_classifier(eps_penalty,alpha,X_in,Y,activation_fn,output_fn):
+    #negative log likelihood function for classification
+    #eps_penalty: parameter for L2 regularization penalty term
     #alpha: np.array of weights for inputs; dim (p+1,M)
-    #beta: np.array of weights for hidden layer; dim (M+1,K)
-    #X_in: np.array of inputs; dim (n,p) (each of the n rows is a separate observation, p is the number of features)
+    #X_in: np.array of inputs; dim (n,p+1) (each of the n rows is a separate observation, p is the number of features)
+    #Y: np.array of outputs; dim (n,K) (K is the number of classes)
     #activation_fn: activation function
     #output_fn: output function
+    
+    #number of observations
+    n=X_in.shape[0]
+    #number of hidden layers
+    n_layers=len(alpha)-1
+    layer=0
+    #add bias vector to hidden layer; dim (batch_size,M[0]+1)
+    Z=np.column_stack((np.ones(n),activation_fn(np.dot(X_in,alpha[layer]))))
 
+    for layer in range(1,n_layers):
+        #add bias vector to hidden layer 
+        Z=np.column_stack((np.ones(n),activation_fn(np.dot(Z,alpha[layer]))))
 
-    #dimension of data
-    #number of rows (observations)
-    n=X_in.shape[0]   
-    #number of input features 
-    p=X_in.shape[1]
-    #add bias vector to inputs
-    X=np.column_stack((np.ones(n),np.copy(X_in)))
-    Z=activation_fn(np.dot(X,alpha))
-    #add bias vector to hidden layer 
-    Z=np.column_stack((np.ones(n),np.copy(Z)))
+    ##############################################################################################
+    #output of last hidden layer
+    layer=n_layers
     #linear combination of hidden layer outputs
-    T=np.dot(Z,beta)
+    T=np.dot()
     #outputs
-    g=output_fn(T)
+    g=output_fn(Z,alpha[layer])
     return g
 ####################################################################################
 ####################################################################################
@@ -46,28 +51,18 @@ def cost_fn(eps_penalty,alpha,X_in,Y,activation_fn,output_fn):
     #number of hidden layers
     n_layers=len(alpha)-1
     layer=0
-    #linear combination of inputs
-    T=np.dot(X_in,alpha[layer][:,:])
-    #hidden layer outputs
-    Z=activation_fn(T)
     #add bias vector to hidden layer; dim (batch_size,M[0]+1)
-    Z=np.column_stack((np.ones(n),Z))
+    Z=np.column_stack((np.ones(n),activation_fn(np.dot(X_in,alpha[layer]))))
 
     for layer in range(1,n_layers):
-        #linear combination of inputs
-        T=np.dot(Z,alpha[layer][:,:])
-        #hidden layer outputs
-        Z=activation_fn(T)
         #add bias vector to hidden layer 
-        Z=np.column_stack((np.ones(n),Z))
+        Z=np.column_stack((np.ones(n),activation_fn(np.dot(Z,alpha[layer]))))
 
     ##############################################################################################
     #output of last hidden layer
     layer=n_layers
-    #linear combination of hidden layer outputs
-    T=np.dot(Z,alpha[layer][:,:])
     #outputs
-    g=output_fn(T)
+    g=output_fn(np.dot(Z,alpha[layer]))
 
     #L2 regularization penalty term
     L2=0.5*eps_penalty*np.array([(alpha[i]**2).sum() for i in range(len(alpha))]).sum()
@@ -143,9 +138,11 @@ def confusion_matrix_multi(y_out,y,n_class):
 ####################################################################################
 
 
-def MLP_stoch_gradV0(epochs,batch_size,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+    #multilayer neural network (perceptron) training with mini-batch stochastic grad descent and exponential smoothing (momentum)
     #epochs: maximum number of iterations through the entire data set for gradient descent
     #batch_size: number of observations used to update alpha and beta
+    #mom_rate: smoothing rate for parameter updates
     #eps_alpha: alpha gradient multiplier (assumed to be same for all alpha)
     #eps_penalty: L2 regularization penalty term parameter
     #alpha: list of np.array of weights 
@@ -174,7 +171,12 @@ def MLP_stoch_gradV0(epochs,batch_size,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,a
         print "number of rows in X and Y are not the same"
         return -9999.
 
-    # print alpha[0][1,1], alpha[1][2,2]
+    #list of gradient-based updates to parameters
+    update_param=[]
+    #parameters for inputs to all other hidden layer activation functions and the output function (K units)
+    for layer in range(n_layers+1):
+        update_param.append(np.zeros(alpha[layer].shape))
+
 
     ##################################################################################################
     ##################################################################################################
@@ -209,16 +211,13 @@ def MLP_stoch_gradV0(epochs,batch_size,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,a
             T=np.dot(X_in[obs_index,:],alpha[layer])
             #gradient of activation function with respect to T
             grad_act=grad_activation_fn(T)
-            #hidden layer outputs
-            Z=activation_fn(T)
             #add bias vector to hidden layer; dim (batch_size,M[0]+1)
-            Z=np.column_stack((np.ones(batch_size),Z))
+            Z=np.column_stack((np.ones(batch_size),activation_fn(T)))
             #dim (batch_size,M[1],p+1,M[0])
             grad.append(np.array([[[alpha[layer+1][q+1,s]*grad_act[:,q]*X_in[obs_index,r] for s in range(M[layer+1])] 
                 for r in range(p+1)] for q in range(M[layer])]).transpose())
 
             for layer in range(1,n_layers):
-                print "layer %s" %layer
                 #linear combination of inputs
                 T=np.dot(Z,alpha[layer])
                 #gradient of activation function with respect to T
@@ -234,10 +233,8 @@ def MLP_stoch_gradV0(epochs,batch_size,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,a
                         grad[h]=np.array([[[[alpha[layer+1][s+1,j]*grad_act[:,s]*grad[h][:,s,r,q] for j in range(M[layer+1])] 
                             for s in range(M[layer])] for r in range(M[h-1]+1)] for q in range(M[h])]).transpose().sum(2)
 
-                #hidden layer outputs
-                Z=activation_fn(T)
                 #add bias vector to hidden layer 
-                Z=np.column_stack((np.ones(batch_size),Z))
+                Z=np.column_stack((np.ones(batch_size),activation_fn(T)))
 
             ##############################################################################################
             #output of last hidden layer
@@ -267,11 +264,14 @@ def MLP_stoch_gradV0(epochs,batch_size,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,a
                 #L2 regularization term
                 M_temp=alpha[i].shape[0]
                 M_range=range(1,M_temp)
-                alpha[i][M_range,:]=alpha[i][M_range,:]-eps_alpha*(-grad[i][M_range,:]+eps_penalty*alpha[i][M_range,:])
+                #use momentum smoothing for the updates
+                update_param[i][M_range,:]=mom_rate*update_param[i][M_range,:]-eps_alpha*(-grad[i][M_range,:]+eps_penalty*alpha[i][M_range,:])
+                #apply smoothed update
+                alpha[i][M_range,:]=alpha[i][M_range,:]+update_param[i][M_range,:]
                 #no regularization for bias parameters
-                alpha[i][0,:]=alpha[i][0,:]-eps_alpha*(-grad[i][0,:])
-
-            # print [(alpha[h].min(), alpha[h].max()) for h in range(len(alpha))]
+                update_param[i][0,:]=mom_rate*update_param[i][0,:]-eps_alpha*(-grad[i][0,:])
+                #apply smoothed update
+                alpha[i][0,:]=alpha[i][0,:]+update_param[i][0,:]
 
         #update epoch iteration
         epoch_iter+=1
@@ -347,35 +347,26 @@ n=X_in.shape[0]
 #####################################################################################
 eps_alpha=0.01
 eps_penalty=0.01
-# n=30
-# p=5
-# X_in=np.random.normal(size=n*p).reshape(n,p)
-# K=3
-# Y_in=np.random.normal(size=n*K).reshape(n,K)
+mom_rate=0.85
 #number of neurons in each hidden layer
-M=np.array([5,5])
+M=np.array([10,10])
+#number of hidden layers
 n_layers=M.shape[0]
 #append the number of output units to M
 M=np.append(M,K)
 #list of network parameters
 alpha=[]
-weight_L=-0.7
-weight_H=0.7
+weight_L=-4*np.sqrt(6./(p+M[0]))
+weight_H=4*np.sqrt(6./(p+M[0]))
 #input parameters for first layer activation function
 alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(p+1)*M[0]).reshape(p+1,M[0]))
 #parameters for inputs to all other hidden layer activation functions and the output function (K units)
 for layer in range(1,n_layers+1):
     alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
 
-# #input parameters for first layer activation function
-# alpha.append(np.random.normal(size=(p+1)*M[0]).reshape(p+1,M[0]))
-# #parameters for inputs to all other hidden layer activation functions and the output function (K units)
-# for layer in range(1,n_layers+1):
-#     alpha.append(np.random.normal(size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
-
 #number of observations used in each gradient update
-batch_size=1000
+batch_size=500
 #number of complete iterations through training data set
-epochs=10
-
-parameters=MLP_stoch_gradV0(epochs,batch_size,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+epochs=20
+#train network and return parameters
+parameters=MLP_stoch_grad_mom(epochs,batch_size,mom_rate,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
