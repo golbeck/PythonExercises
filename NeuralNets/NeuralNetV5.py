@@ -138,12 +138,13 @@ def confusion_matrix_multi(y_out,y,n_class):
 ####################################################################################
 
 
-def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
     #multilayer neural network (perceptron) training with mini-batch stochastic grad descent and exponential smoothing (momentum)
     #epochs: maximum number of iterations through the entire data set for gradient descent
     #batch_size: number of observations used to update alpha and beta
     #mom_rate: smoothing rate for parameter updates
-    #eps_alpha: alpha gradient multiplier (assumed to be same for all alpha)
+    #gamma: annealing rate for learning rate (eps_alpha)
+    #eps_alpha: learning rate/alpha gradient multiplier (assumed to be same for all alpha)
     #eps_penalty: L2 regularization penalty term parameter
     #alpha: list of np.array of weights 
     #M: array of number of neurons for each hidden layer, including the output layer
@@ -188,6 +189,9 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,eps_alpha,eps_penalty,alpha,M,
     #initialize iterator
     epoch_iter=0
     while(epoch_iter<epochs):
+
+    	#update learning rate via annealing
+    	eps_alpha*=1/(1+epoch_iter*gamma)
 
         print "epoch iteration %s" %epoch_iter
         #save rng state to apply the same permutation to both X and Y
@@ -311,8 +315,8 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,eps_alpha,eps_penalty,alpha,M,
 
 #load data
 pwd_temp=os.getcwd()
-# dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
-dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+# dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -348,6 +352,7 @@ n=X_in.shape[0]
 eps_alpha=0.01
 eps_penalty=0.01
 mom_rate=0.85
+gamma=0.04
 #number of neurons in each hidden layer
 M=np.array([10,10])
 #number of hidden layers
@@ -369,4 +374,4 @@ batch_size=500
 #number of complete iterations through training data set
 epochs=20
 #train network and return parameters
-parameters=MLP_stoch_grad_mom(epochs,batch_size,mom_rate,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+parameters=MLP_stoch_grad_mom(epochs,batch_size,mom_rate,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
