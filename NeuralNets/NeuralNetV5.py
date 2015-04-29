@@ -138,7 +138,7 @@ def confusion_matrix_multi(y_out,y,n_class):
 ####################################################################################
 
 
-def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
+def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
     #multilayer neural network (perceptron) training with mini-batch stochastic grad descent and exponential smoothing (momentum)
     #epochs: maximum number of iterations through the entire data set for gradient descent
     #batch_size: number of observations used to update alpha and beta
@@ -192,6 +192,8 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,gamma,eps_alpha,eps_penalty,al
 
     	#update learning rate via annealing
     	eps_alpha*=1/(1+epoch_iter*gamma)
+    	#update momentum rate (starts at mom_param[0] and increases linearly to mom_param[1] over mom_param[2] iterations, after which is stays fixed)
+    	mom_rate=min(mom_param[1],mom_param[0]+(mom_param[1]-mom_param[0])*(epoch_iter/mom_param[2]))
 
         print "epoch iteration %s" %epoch_iter
         #save rng state to apply the same permutation to both X and Y
@@ -253,18 +255,20 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_rate,gamma,eps_alpha,eps_penalty,al
             grad_output=grad_output_fn(T)
             #Y*(1/g)*dg/dT
             C0=np.array([[temp1[:,k]*grad_output[:,k,j] for k in range(K)] for j in range(K)]).transpose().sum(1)
+            print "C0 size in bytes: %s" %C0.nbytes
             #gradient update for current layer
             grad.append(np.array([[C0[:,q]*Z[:,r] for r in range(M[layer-1]+1)] for q in range(K)]).transpose().sum(0))
 
-            #gradient update for previous layers
+            #gradient update for previous layers (and average over batch)
             grad[0]=np.array([[[C0[:,j]*grad[0][:,j,r,q] for j in range(K)] 
-                for r in range(p+1)] for q in range(M[0])]).transpose().sum(1).sum(0)
+                for r in range(p+1)] for q in range(M[0])]).transpose().sum(1).sum(0)/np.float(n)
 
             for h in range(1,n_layers):
                 grad[h]=np.array([[[C0[:,j]*grad[h][:,j,r,q] for j in range(K)] 
-                    for r in range(M[h-1]+1)] for q in range(M[h])]).transpose().sum(1).sum(0)
+                    for r in range(M[h-1]+1)] for q in range(M[h])]).transpose().sum(1).sum(0)/np.float(n)
 
             for i in range(n_layers+1):
+            	print "gradient size in bytes %s" %grad[i].nbytes
                 #L2 regularization term
                 M_temp=alpha[i].shape[0]
                 M_range=range(1,M_temp)
@@ -349,12 +353,17 @@ n=X_in.shape[0]
 ####################################################################################
 #####################################################################################
 #####################################################################################
-eps_alpha=0.01
+#number of observations used in each gradient update
+batch_size=500
+#number of complete iterations through training data set
+epochs=20
+#hyperparameters
+eps_alpha=0.1
 eps_penalty=0.01
-mom_rate=0.85
+mom_param=np.array([0.50,0.99,20.0])
 gamma=0.04
 #number of neurons in each hidden layer
-M=np.array([10,10])
+M=np.array([100,100])
 #number of hidden layers
 n_layers=M.shape[0]
 #append the number of output units to M
@@ -369,9 +378,5 @@ alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(p+1)*M[0]).resha
 for layer in range(1,n_layers+1):
     alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
 
-#number of observations used in each gradient update
-batch_size=500
-#number of complete iterations through training data set
-epochs=20
 #train network and return parameters
-parameters=MLP_stoch_grad_mom(epochs,batch_size,mom_rate,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
+parameters=MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
