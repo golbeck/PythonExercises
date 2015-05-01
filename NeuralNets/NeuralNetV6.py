@@ -203,11 +203,11 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
         np.random.shuffle(X_in)
         np.random.set_state(rng_state)
         np.random.shuffle(Y_in)        
-
+        ##############################################################################################
         #iterate through the entire observation set, updating the gradient via mini-batches
         for batch_number in range(n_mini_batch):
             # print "batch number %s" %batch_number
-
+            #feedforward operation: generate activations, activation gradients
             grad=range(n_layers+1)
             grad_act=[]
             Z=[]
@@ -239,21 +239,25 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
             grad_output=grad_output_fn(T)
             #outputs
             g=output_fn(T)
-
-            #Y/g*grad_output: dimensions (n_batch,K,K)
-            B_old=np.einsum('ij,ij,ijk->ik',Y_in[obs_index,:],1/g,grad_output)
-            #sum over observations and save gradient
+            ##############################################################################################
+            #backpropagation
+            #outer layer (Y/g)*gradient of output (summed over classes)
+            B_old=np.einsum('ij,ij,ijk->ik',Y_in[obs_index,:],1.0/g,grad_output)
+            #multiply by outer layer activations to obtain gradient and sum over all observations
             grad[layer]=-np.einsum('ij,ik->jk',Z[layer-1],B_old)
 
             for layer in range(n_layers,1,-1):
                 B_old=np.einsum('ij,kj,ik->ik',B_old,alpha[layer][range(1,M[layer-1]+1),:],grad_act[layer-1])
+                #multiply by activations of the layer to obtain gradient and sum over all observations
                 grad[layer-1]=-np.einsum('ij,ik->jk',Z[layer-2],B_old)
-                # grad[layer-1]=np.einsum('ij,ik->kj',B_old,Z[layer-2])
 
+            #input layer gradient
             layer=1
             B_old=np.einsum('ij,kj,ik->ik',B_old,alpha[layer][range(1,M[layer-1]+1),:],grad_act[layer-1])
+            #multiply by inputs to obtain gradient and sum over all observations
             grad[layer-1]=-np.einsum('ij,ik->jk',X_in[obs_index,:],B_old)
-
+            ##############################################################################################
+            #gradient descent updates with momentum smoothing
             for i in range(n_layers+1):
                 #L2 regularization term
                 M_temp=alpha[i].shape[0]
@@ -271,7 +275,7 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
         epoch_iter+=1
         ##############################################################################################
         ##############################################################################################
-        #predict classes and compute accuracy rate
+        #predict classes and compute accuracy rate on ccomplete training set
         layer=0
         #add bias vector to hidden layer; dim (batch_size,M[0]+1)
         Z=np.column_stack((np.ones(n),activation_fn(np.dot(X_in,alpha[layer]))))
@@ -291,7 +295,8 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
         # print CF
         accuracy=CF.diagonal().sum(0)/n
         print "accuracy rate %s" %accuracy
-
+        print alpha[n_layers-1][5,5]
+    #output learned parameters after all epochs
     return alpha
 
 
@@ -305,8 +310,8 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
 
 #load data
 pwd_temp=os.getcwd()
-# dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
-dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+# dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -349,20 +354,26 @@ eps_penalty=0.01
 mom_param=np.array([0.50,0.99,200.0])
 gamma=0.02
 #number of neurons in each hidden layer
-M=np.array([100,100])
+M=np.array([500,500])
 #number of hidden layers
 n_layers=M.shape[0]
 #append the number of output units to M
 M=np.append(M,K)
 #list of network parameters
-alpha=[]
 weight_L=-4*np.sqrt(6./(p+M[0]))
 weight_H=4*np.sqrt(6./(p+M[0]))
-#input parameters for first layer activation function
-alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(p+1)*M[0]).reshape(p+1,M[0]))
-#parameters for inputs to all other hidden layer activation functions and the output function (K units)
-for layer in range(1,n_layers+1):
-    alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
+
+#generate non-zero parmaeters
+count_zero=0.0
+while count_zero==0.0:
+	alpha=[]
+	#input parameters for first layer activation function
+	alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(p+1)*M[0]).reshape(p+1,M[0]))
+	#parameters for inputs to all other hidden layer activation functions and the output function (K units)
+	for layer in range(1,n_layers+1):
+	    alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
+	count_zero=np.array([np.abs(alpha[0]).min() for i in range(n_layers+1)]).sum()
+
 
 #train network and return parameters
 parameters=MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,alpha,M,X_in,Y_in,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
