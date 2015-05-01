@@ -191,7 +191,8 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
     while(epoch_iter<epochs):
 
     	#update learning rate via annealing
-    	eps_alpha*=1/(1+epoch_iter*gamma)
+    	# eps_alpha*=1/(1+epoch_iter*gamma)
+        eps_alpha*=(1-gamma)
     	#update momentum rate (starts at mom_param[0] and increases linearly to mom_param[1] over mom_param[2] iterations, after which is stays fixed)
     	mom_rate=min(mom_param[1],mom_param[0]+(mom_param[1]-mom_param[0])*(epoch_iter/mom_param[2]))
 
@@ -205,9 +206,9 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
 
         #iterate through the entire observation set, updating the gradient via mini-batches
         for batch_number in range(n_mini_batch):
-            print "batch number %s" %batch_number
-            #initialize gradient list
-            grad=[]
+            # print "batch number %s" %batch_number
+
+            grad=range(n_layers+1)
             grad_act=[]
             Z=[]
             ##############################################################################################
@@ -230,60 +231,39 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
                 #add bias vector to hidden layer 
                 Z.append(np.column_stack((np.ones(batch_size),activation_fn(T))))
 
-
-            ##############################################################################################
             #output of last hidden layer
             layer=n_layers
             #linear combination of hidden layer outputs
-            T=np.dot(Z[layer],alpha[layer])
+            T=np.dot(Z[layer-1],alpha[layer])
             #gradient of output function
             grad_output=grad_output_fn(T)
             #outputs
             g=output_fn(T)
 
-            #compute 
-            B_old=np.array([Y_in[obs_index,:]/g*grad_output[:,:,k] for k in range(M[layer])]).transpose(1,2,0)
+            #Y/g*grad_output: dimensions (n_batch,K,K)
+            B_old=np.einsum('ij,ij,ijk->ik',Y_in[obs_index,:],1/g,grad_output)
+            #sum over observations and save gradient
+            grad[layer]=-np.einsum('ij,ik->jk',Z[layer-1],B_old)
 
-            for layer in range(1,n_layers):
-            	grad[]
+            for layer in range(n_layers,1,-1):
+                B_old=np.einsum('ij,kj,ik->ik',B_old,alpha[layer][range(1,M[layer-1]+1),:],grad_act[layer-1])
+                grad[layer-1]=-np.einsum('ij,ik->jk',Z[layer-2],B_old)
+                # grad[layer-1]=np.einsum('ij,ik->kj',B_old,Z[layer-2])
 
-
-
-
-
-
-
-
-
-
-
-
-
-            #Y*(1/g)*dg/dT
-            C0=np.array([[temp1[:,k]*grad_output[:,k,j] for k in range(K)] for j in range(K)]).transpose().sum(1)
-            print "C0 size in bytes: %s" %C0.nbytes
-            #gradient update for current layer
-            grad.append(np.array([[C0[:,q]*Z[:,r] for r in range(M[layer-1]+1)] for q in range(K)]).transpose().sum(0))
-
-            #gradient update for previous layers (and average over batch)
-            grad[0]=np.array([[[C0[:,j]*grad[0][:,j,r,q] for j in range(K)] 
-                for r in range(p+1)] for q in range(M[0])]).transpose().sum(1).sum(0)/np.float(n)
-
-            for h in range(1,n_layers):
-                grad[h]=np.array([[[C0[:,j]*grad[h][:,j,r,q] for j in range(K)] 
-                    for r in range(M[h-1]+1)] for q in range(M[h])]).transpose().sum(1).sum(0)/np.float(n)
+            layer=1
+            B_old=np.einsum('ij,kj,ik->ik',B_old,alpha[layer][range(1,M[layer-1]+1),:],grad_act[layer-1])
+            grad[layer-1]=-np.einsum('ij,ik->jk',X_in[obs_index,:],B_old)
 
             for i in range(n_layers+1):
-            	print "gradient size in bytes %s" %grad[i].nbytes
                 #L2 regularization term
                 M_temp=alpha[i].shape[0]
                 M_range=range(1,M_temp)
                 #use momentum smoothing for the updates
-                update_param[i][M_range,:]=mom_rate*update_param[i][M_range,:]-eps_alpha*(-grad[i][M_range,:]+eps_penalty*alpha[i][M_range,:])
+                update_param[i][M_range,:]=mom_rate*update_param[i][M_range,:]-eps_alpha*(grad[i][M_range,:]+eps_penalty*alpha[i][M_range,:])
                 #apply smoothed update
                 alpha[i][M_range,:]=alpha[i][M_range,:]+update_param[i][M_range,:]
                 #no regularization for bias parameters
-                update_param[i][0,:]=mom_rate*update_param[i][0,:]-eps_alpha*(-grad[i][0,:])
+                update_param[i][0,:]=mom_rate*update_param[i][0,:]-eps_alpha*(grad[i][0,:])
                 #apply smoothed update
                 alpha[i][0,:]=alpha[i][0,:]+update_param[i][0,:]
 
@@ -308,7 +288,7 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
         y_dat=Y_in.argmax(1)+1
         #compute confusion matrix using predicted outputs (y_pred) and actual labels (y_dat)
         CF=confusion_matrix_multi(y_pred,y_dat,K)
-        print CF
+        # print CF
         accuracy=CF.diagonal().sum(0)/n
         print "accuracy rate %s" %accuracy
 
@@ -325,8 +305,8 @@ def MLP_stoch_grad_mom(epochs,batch_size,mom_param,gamma,eps_alpha,eps_penalty,a
 
 #load data
 pwd_temp=os.getcwd()
-dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
-# dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+# dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -360,14 +340,14 @@ n=X_in.shape[0]
 #####################################################################################
 #####################################################################################
 #number of observations used in each gradient update
-batch_size=500
+batch_size=100
 #number of complete iterations through training data set
-epochs=20
+epochs=200
 #hyperparameters
-eps_alpha=0.1
+eps_alpha=0.01
 eps_penalty=0.01
-mom_param=np.array([0.50,0.99,20.0])
-gamma=0.04
+mom_param=np.array([0.50,0.99,200.0])
+gamma=0.02
 #number of neurons in each hidden layer
 M=np.array([100,100])
 #number of hidden layers
