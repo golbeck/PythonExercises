@@ -443,7 +443,7 @@ parameters=MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,valida
 #validation set error
 n_validation=np.int(X_validation.shape[0])
 X_validation=np.column_stack((np.ones(n_validation),X_validation))
-y_pred_validation=NN_classifier(alpha,X_validation,special.expit,softmax_fn)
+y_pred_validation=NN_classifier(alpha*prob_dropout,X_validation,special.expit,softmax_fn)
 y_pred_validation=y_pred_validation.argmax(1)+1
 y_dat_validation=Y_validation.argmax(1)+1
 #compute confusion matrix using predicted outputs (y_pred) and actual labels (y_dat)
