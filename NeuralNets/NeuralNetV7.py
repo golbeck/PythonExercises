@@ -135,6 +135,8 @@ def confusion_matrix_multi(y_out,y,n_class):
 
 def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_freq,prob_dropout,batch_size,mom_param,gamma,eps_alpha,eps_penalty,alpha,M,X_train,Y_train,X_test,Y_test,activation_fn,output_fn,grad_activation_fn,grad_output_fn):
     #multilayer neural network (perceptron) training with mini-batch stochastic grad descent and exponential smoothing (momentum)
+    #dropout is used; see http://www.cs.toronto.edu/~rsalakhu/papers/srivastava14a.pdf
+
     #min_epochs: minimum number of epochs to iterate through before checking test score
     #max_epochs: maximum number of epochs to iterate through for training to complete
     #improvement_threshold: size of improvement in error on validation set that must be met to continue training
@@ -355,34 +357,104 @@ def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_fr
 ####################################################################################
 ####################################################################################
 
-#load data
+# #load data
+# pwd_temp=os.getcwd()
+# dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+# # dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+# if pwd_temp!=dir1:
+#     os.chdir(dir1)
+# dir1=dir1+'/data' 
+# import scipy.io as sio
+# dat=sio.loadmat(dir1+'/ex3data1.mat')
+
+
+
+# X_in=np.array(dat['X'])
+# y_mat=np.array(dat['y'])
+# #create a matrix with 0-1 class labels
+# K=y_mat.max()
+# Y_in=np.zeros((y_mat.shape[0],K))
+# for i in range(y_mat.shape[0]):
+#     Y_in[i,y_mat[i]-1]=1
+# p=X_in.shape[1]
+
+
+# #randomly permuate the features and outputs using the same shuffle for each epoch
+# rng_state = np.random.get_state()  
+# np.random.shuffle(X_in)
+# np.random.set_state(rng_state)
+# np.random.shuffle(Y_in)      
+# rng_state = np.random.get_state()  
+
+# #total number of obs in data set
+# n=X_in.shape[0]
+
+# #train network and return parameters
+# frac=0.80
+# train_indices=range(0,np.int(frac*n))
+# frac_validation=0.10
+# frac_test=1.0-frac-frac_validation
+# test_indices=range(np.int(frac*n),np.int((frac+frac_test)*n))
+# validation_indices=range(np.int((frac+frac_test)*n),n)
+# X_train=X_in[train_indices,:]
+# Y_train=Y_in[train_indices,:]
+# X_test=X_in[test_indices,:]
+# Y_test=Y_in[test_indices,:]
+# X_validation=X_in[validation_indices,:]
+# Y_validation=Y_in[validation_indices,:]
+
+
+##################################################################################################
+##################################################################################################
+####################################################################################
+#GET INPUTS
+####################################################################################
+####################################################################################
+####################################################################################
 pwd_temp=os.getcwd()
 dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
 # dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
-import scipy.io as sio
-dat=sio.loadmat(dir1+'/ex3data1.mat')
-X_in=np.array(dat['X'])
-y_mat=np.array(dat['y'])
-#create a matrix with 0-1 class labels
-K=y_mat.max()
-Y_in=np.zeros((y_mat.shape[0],K))
-for i in range(y_mat.shape[0]):
-    Y_in[i,y_mat[i]-1]=1
-p=X_in.shape[1]
+dataset=dir1+'/mnist.pkl.gz'
+import cPickle
+import gzip
+f = gzip.open(dataset, 'rb')
+train_set, valid_set, test_set = cPickle.load(f)
+f.close()
 
+X_train=train_set[0]
+#number of features
+p=X_train.shape[1]
+#outputs for training set
+Y_train_array=train_set[1].reshape(X_train.shape[0],1)
 
-#randomly permuate the features and outputs using the same shuffle for each epoch
-rng_state = np.random.get_state()  
-np.random.shuffle(X_in)
-np.random.set_state(rng_state)
-np.random.shuffle(Y_in)      
-rng_state = np.random.get_state()  
+#test set
+X_test=test_set[0]
+Y_test_array=test_set[1].reshape(X_test.shape[0],1)
 
-#total number of obs in data set
-n=X_in.shape[0]
+#validation set
+X_validation=valid_set[0]
+Y_validation_array=valid_set[1].reshape(X_validation.shape[0],1)
+
+#convert output array to 0,1 matrix
+K=Y_train_array.max(0)+1
+Y_train=np.zeros((Y_train_array.shape[0],K))
+for i in range(Y_train_array.shape[0]):
+    Y_train[i,Y_train_array[i]]=1
+
+#convert output array to 0,1 matrix
+K=Y_test_array.max(0)+1
+Y_test=np.zeros((Y_test_array.shape[0],K))
+for i in range(Y_test_array.shape[0]):
+    Y_test[i,Y_test_array[i]]=1
+
+#convert output array to 0,1 matrix
+K=Y_validation_array.max(0)+1
+Y_validation=np.zeros((Y_validation_array.shape[0],K))
+for i in range(Y_validation_array.shape[0]):
+    Y_validation[i,Y_validation_array[i]]=1
 
 ####################################################################################
 ####################################################################################
@@ -392,22 +464,25 @@ n=X_in.shape[0]
 #####################################################################################
 #####################################################################################
 #number of observations used in each gradient update
-batch_size=100
+batch_size=250
 #hyperparameters
 eps_alpha=0.01
+#L2 regularization parameter
 eps_penalty=0.001
+#momentum smoothing parameter is min( x[0]+(x[1]-x[0])*epoch/x[2], x[1])
 mom_param=np.array([0.50,0.99,200.0])
+#at each epoch, learning rate decreases by a factor of (1-gamma)
 gamma=0.02
 #number of neurons in each hidden layer
-M=np.array([1000,1000])
+M=np.array([100,100])
 #number of hidden layers
 n_layers=M.shape[0]
 #append the number of output units to M
 M=np.append(M,K)
 #list of network parameters
+#choose starting values from a uniform distribution with left and right endpoints specified by:
 weight_L=-4*np.sqrt(6./(p+M[0]))
 weight_H=4*np.sqrt(6./(p+M[0]))
-
 #generate non-zero parmaeters
 count_zero=0.0
 while count_zero==0.0:
@@ -419,30 +494,23 @@ while count_zero==0.0:
 	    alpha.append(np.random.uniform(low=weight_L,high=weight_H,size=(M[layer-1]+1)*M[layer]).reshape(M[layer-1]+1,M[layer]))
 	count_zero=np.array([np.abs(alpha[0]).min() for i in range(n_layers+1)]).sum()
 
-
-#train network and return parameters
-frac=0.80
-train_indices=range(0,np.int(frac*n))
-frac_validation=0.10
-frac_test=1.0-frac-frac_validation
-test_indices=range(np.int(frac*n),np.int((frac+frac_test)*n))
-validation_indices=range(np.int((frac+frac_test)*n),n)
-prob_dropout=np.append([0.9],np.ones(n_layers)*0.5)
-X_train=X_in[train_indices,:]
-Y_train=Y_in[train_indices,:]
-X_test=X_in[test_indices,:]
-Y_test=Y_in[test_indices,:]
-X_validation=X_in[validation_indices,:]
-Y_validation=Y_in[validation_indices,:]
-improvement_threshold=3.0
+#threshold for improvement of the error over the validation_freq that needs to be achieved to continue training
+improvement_threshold=0.95
+#number of epochs to train before measuring error rate on test test
 validation_freq=10
-min_epochs=30
-max_epochs=400
-prob_dropout=np.append([0.9],np.ones(n_layers)*0.5)
+#min number of epochs for training
+min_epochs=40
+#max number of epochs for training
+max_epochs=100
+#dropout probabilities
+#keep most of the inputs (p>0.7) and use a lower probability for hidden units (p~0.5)
+prob_dropout=np.append([0.8],np.ones(n_layers)*0.5)
+#train network and output parameters
 parameters=MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_freq,prob_dropout,batch_size,mom_param,gamma,eps_alpha,eps_penalty,alpha,M,X_train,Y_train,X_test,Y_test,special.expit,softmax_fn,grad_sigmoid,grad_softmax)
 #validation set error
 n_validation=np.int(X_validation.shape[0])
 X_validation=np.column_stack((np.ones(n_validation),X_validation))
+#scale parameters by dropout probabilities when classifying on validation set
 y_pred_validation=NN_classifier(alpha*prob_dropout,X_validation,special.expit,softmax_fn)
 y_pred_validation=y_pred_validation.argmax(1)+1
 y_dat_validation=Y_validation.argmax(1)+1
