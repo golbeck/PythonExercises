@@ -1,26 +1,4 @@
-"""
-This tutorial introduces the multilayer perceptron using Theano.
-
- A multilayer perceptron is a logistic regressor where
-instead of feeding the input to the logistic regression you insert a
-intermediate layer, called the hidden layer, that has a nonlinear
-activation function (usually tanh or sigmoid) . One can use many such
-hidden layers making the architecture deep. The tutorial will also tackle
-the problem of MNIST digit classification.
-
-.. math::
-
-    f(x) = G( b^{(2)} + W^{(2)}( s( b^{(1)} + W^{(1)} x))),
-
-References:
-
-    - textbooks: "Pattern Recognition and Machine Learning" -
-                 Christopher M. Bishop, section 5
-
-"""
 __docformat__ = 'restructedtext en'
-
-
 
 import cPickle
 import gzip
@@ -32,8 +10,6 @@ import numpy
 
 import theano
 import theano.tensor as T
-
-
 # from logistic_sgd import LogisticRegression, load_data
 ####################################################################################
 ####################################################################################
@@ -47,8 +23,8 @@ class LogisticRegression(object):
     determine a class membership probability.
     """
 
-####################################################################################
-####################################################################################
+    ####################################################################################
+    ####################################################################################
     def __init__(self, input, n_in, n_out):
         """ Initialize the parameters of the logistic regression
 
@@ -68,19 +44,13 @@ class LogisticRegression(object):
         # start-snippet-1
         # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
         self.W = theano.shared(
-            value=numpy.zeros(
-                (n_in, n_out),
-                dtype=theano.config.floatX
-            ),
+            value=numpy.zeros((n_in, n_out),dtype=theano.config.floatX),
             name='W',
             borrow=True
         )
         # initialize the baises b as a vector of n_out 0s
         self.b = theano.shared(
-            value=numpy.zeros(
-                (n_out,),
-                dtype=theano.config.floatX
-            ),
+            value=numpy.zeros((n_out,),dtype=theano.config.floatX),
             name='b',
             borrow=True
         )
@@ -103,18 +73,11 @@ class LogisticRegression(object):
         # parameters of the model
         self.params = [self.W, self.b]
 
-####################################################################################
-####################################################################################
+    ####################################################################################
+    ####################################################################################
     def negative_log_likelihood(self, y):
         """Return the mean of the negative log-likelihood of the prediction
         of this model under a given target distribution.
-
-        .. math::
-
-            \frac{1}{|\mathcal{D}|} \mathcal{L} (\theta=\{W,b\}, \mathcal{D}) =
-            \frac{1}{|\mathcal{D}|} \sum_{i=0}^{|\mathcal{D}|}
-                \log(P(Y=y^{(i)}|x^{(i)}, W,b)) \\
-            \ell (\theta=\{W,b\}, \mathcal{D})
 
         :type y: theano.tensor.TensorType
         :param y: corresponds to a vector that gives for each example the
@@ -137,8 +100,8 @@ class LogisticRegression(object):
         return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
         # end-snippet-2
 
-####################################################################################
-####################################################################################
+    ####################################################################################
+    ####################################################################################
     def errors(self, y):
         """Return a float representing the number of errors in the minibatch
         over the total number of examples of the minibatch ; zero one
@@ -214,8 +177,8 @@ def load_data(dataset):
     #the number of rows in the input. It should give the target
     #target to the example with the same index in the input.
 
-####################################################################################
-####################################################################################
+    ####################################################################################
+    ####################################################################################
     def shared_dataset(data_xy, borrow=True):
         """ Function that loads the dataset into shared variables
 
@@ -342,8 +305,8 @@ class MLP(object):
     class).
     """
 
-####################################################################################
-####################################################################################
+    ####################################################################################
+    ####################################################################################
     def __init__(self, rng, input, n_in, n_hidden, n_out):
         """Initialize the parameters for the multilayer perceptron
 
@@ -635,9 +598,9 @@ def test_mlp(learning_rate=0.1, L1_reg=0.00, L2_reg=0.0001, n_epochs=10,
     print(('Optimization complete. Best validation score of %f %% '
            'obtained at iteration %i, with test performance %f %%') %
           (best_validation_loss * 100., best_iter + 1, test_score * 100.))
-    print >> sys.stderr, ('The code for file ' +
-                          os.path.split(__file__)[1] +
-                          ' ran for %.2fm' % ((end_time - start_time) / 60.))
+    print >> sys.stderr, ('The code ran for %.2fm' % ((end_time - start_time) / 60.))
+
+    return classifier.params
 
 
 ####################################################################################
@@ -648,9 +611,11 @@ def test_mlp(learning_rate=0.1, L1_reg=0.00, L2_reg=0.0001, n_epochs=10,
 ####################################################################################
 if __name__ == '__main__':
     pwd_temp=os.getcwd()
-    dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
-    # dir1='/home/golbeck/Workspace/Kaggle_MNIST'
+    # dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
+    dir1='/home/golbeck/Workspace/Kaggle_MNIST'
     dir1=dir1+'/data' 
     if pwd_temp!=dir1:
         os.chdir(dir1)
-    test_mlp()
+    data_set=dir1+'/mnist.pkl.gz'
+    params=test_mlp(learning_rate=0.1, L1_reg=0.00, L2_reg=0.0001, n_epochs=1,
+             dataset=data_set, batch_size=100, n_hidden=numpy.array([1500,800,300]))

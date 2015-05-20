@@ -197,10 +197,10 @@ def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_fr
     epoch_iter=0
     #set condition to False in order to initialize training loop
     done_looping=False
-    #save validation scores in order to determine improvement
-    test_scores=[]
-    #best validation score initially set to 0.0
-    test_loss_best=1.0
+    #save train scores in order to determine improvement
+    train_scores=[]
+    #best train accuracy initially set to 0.0
+    train_loss_best=1.0
     #loop through epochs and train classifier provided that epoch counter is low enough and test set error shows improvement
     while (epoch_iter<min(epochs,max_epochs)) and (not done_looping):
         #update learning rate via annealing
@@ -307,6 +307,7 @@ def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_fr
         CF=confusion_matrix_multi(y_pred_train,y_dat_train,K)
         # print CF
         accuracy=CF.diagonal().sum(0)/y_pred_train.shape[0]
+        train_scores.append(accuracy)
         print "training set accuracy rate %s" %accuracy
         ##############################################################################################
         ##############################################################################################
@@ -321,17 +322,14 @@ def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_fr
         CF=confusion_matrix_multi(y_pred_test,y_dat_test,K)
         # print CF
         accuracy=CF.diagonal().sum(0)/y_pred_test.shape[0]
-        #save to current list of test set scores
-        test_scores.append(accuracy)
         print "test set accuracy rate %s" %accuracy
         #if enough epochs have been iterated, through test if test set error has decreased sufficiently
         if (epoch_iter>=min_epochs) and (epoch_iter % validation_freq==0):
-            #average test error over current set
-            avg_loss=1.0-np.array(test_scores).mean()
+            #average train error over current set
+            avg_loss=1.0-np.array(train_scores).mean()
             print "average loss: %s" %avg_loss
-            #threshold for test error to pass below in order to continue training
-            loss_threshold=improvement_threshold*test_loss_best
-            # loss_threshold=test_loss_best+2.0*np.array(test_scores).std()/np.sqrt(validation_freq)
+            #threshold for train error to pass below in order to continue training
+            loss_threshold=improvement_threshold*train_loss_best
             print "threshold loss %s" %loss_threshold
             #test if loss has not decreased sufficiently, such that we can stop training
             if avg_loss<loss_threshold:
@@ -339,10 +337,10 @@ def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_fr
             else:
                 done_looping=True
             #update best test set loss
-            test_loss_best=min(test_loss_best,1.0-np.array(test_scores).max())
+            train_loss_best=min(train_loss_best,1.0-np.array(train_scores).max())
             #new list of test set scores
-            test_scores=[]
-            print "best test set loss %s" %test_loss_best
+            train_scores=[]
+            print "best train set loss %s" %train_loss_best
 
     #output learned parameters after all epochs
     return alpha
@@ -412,8 +410,8 @@ def MLP_stoch_grad_mom(min_epochs,max_epochs,improvement_threshold,validation_fr
 ####################################################################################
 ####################################################################################
 pwd_temp=os.getcwd()
-dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
-# dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
+# dir1='/home/sgolbeck/workspace/PythonExercises/NeuralNets'
+dir1='/home/golbeck/Workspace/PythonExercises/NeuralNets'
 if pwd_temp!=dir1:
     os.chdir(dir1)
 dir1=dir1+'/data' 
@@ -474,7 +472,7 @@ mom_param=np.array([0.50,0.99,200.0])
 #at each epoch, learning rate decreases by a factor of (1-gamma)
 gamma=0.02
 #number of neurons in each hidden layer
-M=np.array([100,100])
+M=np.array([800,800])
 #number of hidden layers
 n_layers=M.shape[0]
 #append the number of output units to M
@@ -495,7 +493,7 @@ while count_zero==0.0:
 	count_zero=np.array([np.abs(alpha[0]).min() for i in range(n_layers+1)]).sum()
 
 #threshold for improvement of the error over the validation_freq that needs to be achieved to continue training
-improvement_threshold=0.95
+improvement_threshold=1.5
 #number of epochs to train before measuring error rate on test test
 validation_freq=10
 #min number of epochs for training
