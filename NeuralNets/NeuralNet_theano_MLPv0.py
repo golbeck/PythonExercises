@@ -358,8 +358,8 @@ class MLP(object):
         :param n_in: number of input units, the dimension of the space in
         which the datapoints lie
 
-        :type n_hidden: int
-        :param n_hidden: number of hidden units
+        :type n_hidden: numpy array
+        :param n_hidden: array of number of hidden units in each layer
 
         :type n_out: int
         :param n_out: number of output units, the dimension of the space in
@@ -371,33 +371,44 @@ class MLP(object):
         # into a HiddenLayer with a tanh activation function connected to the
         # LogisticRegression layer; the activation function can be replaced by
         # sigmoid or any other nonlinear function
-        self.hiddenLayer = HiddenLayer(
+        self.hiddenLayer1 = HiddenLayer(
             rng=rng,
             input=input,
             n_in=n_in,
-            n_out=n_hidden,
+            n_out=n_hidden[0],
+            activation=T.tanh
+        )
+
+
+        self.hiddenLayer2 = HiddenLayer(
+            rng=rng,
+            input=self.hiddenLayer1.output,
+            n_in=n_hidden[0],
+            n_out=n_hidden[1],
             activation=T.tanh
         )
 
         # The logistic regression layer gets as input the hidden units
         # of the hidden layer
         self.logRegressionLayer = LogisticRegression(
-            input=self.hiddenLayer.output,
-            n_in=n_hidden,
+            input=self.hiddenLayer2.output,
+            n_in=n_hidden[1],
             n_out=n_out
         )
         # end-snippet-2 start-snippet-3
         # L1 norm ; one regularization option is to enforce L1 norm to
         # be small
         self.L1 = (
-            abs(self.hiddenLayer.W).sum()
+            abs(self.hiddenLayer1.W).sum()
+            + abs(self.hiddenLayer2.W).sum()
             + abs(self.logRegressionLayer.W).sum()
         )
 
         # square of L2 norm ; one regularization option is to enforce
         # square of L2 norm to be small
         self.L2_sqr = (
-            (self.hiddenLayer.W ** 2).sum()
+            (self.hiddenLayer1.W ** 2).sum()
+            + (self.hiddenLayer2.W ** 2).sum()
             + (self.logRegressionLayer.W ** 2).sum()
         )
 
@@ -412,7 +423,7 @@ class MLP(object):
 
         # the parameters of the model are the parameters of the two layer it is
         # made out of
-        self.params = self.hiddenLayer.params + self.logRegressionLayer.params
+        self.params = self.hiddenLayer1.params + self.hiddenLayer2.params + self.logRegressionLayer.params
         # end-snippet-3
 
 ####################################################################################
@@ -422,7 +433,7 @@ class MLP(object):
 ####################################################################################
 ####################################################################################
 def test_mlp(learning_rate=0.1, L1_reg=0.00, L2_reg=0.0001, n_epochs=10,
-             dataset='mnist.pkl.gz', batch_size=100, n_hidden=50):
+             dataset='mnist.pkl.gz', batch_size=100, n_hidden=numpy.array([500,500])):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer
     perceptron
