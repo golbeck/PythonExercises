@@ -56,6 +56,19 @@ class LogisticRegression(object):
             borrow=True
         )
 
+
+        self.W_update = theano.shared(
+            value=numpy.zeros((n_in, n_out),dtype=theano.config.floatX),
+            name='W_update',
+            borrow=True
+        )
+        # initialize the baises b as a vector of n_out 0s
+        self.b_update = theano.shared(
+            value=numpy.zeros((n_out,),dtype=theano.config.floatX),
+            name='b_update',
+            borrow=True
+        )
+
         # symbolic expression for computing the matrix of class-membership
         # probabilities
         # Where:
@@ -73,6 +86,7 @@ class LogisticRegression(object):
 
         # parameters of the model
         self.params = [self.W, self.b]
+        self.param_updates = [self.W_update, self.b_update]
 
 
     ####################################################################################
@@ -174,52 +188,13 @@ def load_data():
     train_set_x, train_set_y = shared_dataset(train_set)
     rval = [(train_set_x, train_set_y), test_set_x]
     return rval
-
-def gradient_updates_momentum(cost, params, learning_rate, momentum):
-    '''
-    Compute updates for gradient descent with momentum
-    
-    :parameters:
-        - cost : theano.tensor.var.TensorVariable
-            Theano cost function to minimize
-        - params : list of theano.tensor.var.TensorVariable
-            Parameters to compute gradient against
-        - learning_rate : float
-            Gradient descent learning rate
-        - momentum : float
-            Momentum parameter, should be at least 0 (standard gradient descent) and less than 1
-   
-    :returns:
-        updates : list
-            List of updates, one for each parameter
-    '''
-    # Make sure momentum is a sane value
-    assert momentum < 1 and momentum >= 0
-    # List of update steps for each parameter
-    updates = []
-    # Just gradient descent on cost
-    for param in params:
-        # For each parameter, we'll create a param_update shared variable.
-        # This variable will keep track of the parameter's update step across iterations.
-        # We initialize it to 0
-        param_update = theano.shared(param.get_value()*0., broadcastable=param.broadcastable)
-        # Each parameter is updated by taking a step in the direction of the gradient.
-        # However, we also "mix in" the previous step according to the given momentum value.
-        # Note that when updating param_update, we are using its old value and also the new gradient step.
-        updates.append((param, param - learning_rate*param_update))
-        # Note that we don't need to derive backpropagation to compute updates - just use T.grad!
-        updates.append((param_update, momentum*param_update + (1. - momentum)*T.grad(cost, param)))
-    return updates
-####################################################################################
-####################################################################################
-####################################################################################
 ####################################################################################
 ####################################################################################
 ####################################################################################
 class HiddenLayer(object):
 ####################################################################################
 ####################################################################################
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None,
+    def __init__(self, rng, input, n_in, n_out, W=None, b=None,W_update=None,b_update=None,
                  activation=T.tanh):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
@@ -274,6 +249,17 @@ class HiddenLayer(object):
             b_values = numpy.zeros((n_out,), dtype=theano.config.floatX)
             b = theano.shared(value=b_values, name='b', borrow=True)
 
+
+        #parameter updates (for momentum)
+        if W_update is None:
+            W_update_values = numpy.zeros((n_in, n_out),dtype=theano.config.floatX)
+
+            W_update = theano.shared(value=W_update_values, name='W_update', borrow=True)
+
+        if b_update is None:
+            b_update_values = numpy.zeros((n_out,), dtype=theano.config.floatX)
+            b_update = theano.shared(value=b_update_values, name='b_update', borrow=True)
+
         self.W = W
         self.b = b
 
@@ -284,6 +270,11 @@ class HiddenLayer(object):
         )
         # parameters of the model
         self.params = [self.W, self.b]
+
+        self.W_update = W_update
+        self.b_update = b_update
+
+        self.param_updates=[W_update,b_update]
 
 
 ####################################################################################
@@ -389,10 +380,49 @@ class MLP(object):
         # made out of
         self.params = self.hiddenLayer1.params + self.hiddenLayer2.params + self.logRegressionLayer.params
         # end-snippet-3
+        self.param_updates = self.hiddenLayer1.param_updates + self.hiddenLayer2.param_updates + self.logRegressionLayer.param_updates
 
 ####################################################################################
 ####################################################################################
 ####################################################################################
+####################################################################################
+####################################################################################
+####################################################################################
+
+def gradient_updates_momentum(cost, params, param_updates, learning_rate, momentum):
+    '''
+    Compute updates for gradient descent with momentum
+    
+    :parameters:
+        - cost : theano.tensor.var.TensorVariable
+            Theano cost function to minimize
+        - params : list of theano.tensor.var.TensorVariable
+            Parameters to compute gradient against
+        - learning_rate : float
+            Gradient descent learning rate
+        - momentum : float
+            Momentum parameter, should be at least 0 (standard gradient descent) and less than 1
+   
+    :returns:
+        updates : list
+            List of updates, one for each parameter
+    '''
+    # Make sure momentum is a sane value
+    assert momentum < 1 and momentum >= 0
+    # List of update steps for each parameter
+    updates = []
+    # Just gradient descent on cost
+    for param, param_update in zip(params, param_updates):
+        # For each parameter, we'll create a param_update shared variable.
+        # This variable will keep track of the parameter's update step across iterations.
+        # We initialize it to 0
+        # Each parameter is updated by taking a step in the direction of the gradient.
+        # However, we also "mix in" the previous step according to the given momentum value.
+        # Note that when updating param_update, we are using its old value and also the new gradient step.
+        updates.append((param_update, momentum*param_update + learning_rate*T.grad(cost, param)))
+        updates.append((param, param - param_update))
+        # Note that we don't need to derive backpropagation to compute updates - just use T.grad!
+    return updates
 ####################################################################################
 ####################################################################################
 ####################################################################################
@@ -504,7 +534,7 @@ def test_mlp(learning_rate=0.1, momentum=0.5, rate_adj=0.40, L1_reg=0.00, L2_reg
     train_model = theano.function(
         inputs=[index],
         outputs=classifier.errors(y),
-        updates=gradient_updates_momentum(cost, classifier.params, learning_rate, momentum),
+        updates=gradient_updates_momentum(cost, classifier.params,classifier.param_updates, learning_rate, momentum),
         givens={
             x: train_set_x[index * batch_size: (index + 1) * batch_size],
             y: train_set_y[index * batch_size: (index + 1) * batch_size]
@@ -586,4 +616,4 @@ if pwd_temp!=dir1:
     os.chdir(dir1)
 
 params=test_mlp(learning_rate=0.1, momentum=0.50,rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epochs=100,
-         batch_size=100, n_hidden=numpy.array([800,800]))
+         batch_size=100, n_hidden=numpy.array([100,100]))
