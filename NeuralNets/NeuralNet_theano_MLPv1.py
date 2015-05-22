@@ -6,6 +6,7 @@ import os
 import sys
 import time
 
+import pandas
 import numpy
 
 import theano
@@ -73,6 +74,12 @@ class LogisticRegression(object):
         # parameters of the model
         self.params = [self.W, self.b]
 
+
+    ####################################################################################
+    ####################################################################################
+    def predict_y(self):
+        return self.y_pred
+
     ####################################################################################
     ####################################################################################
     def negative_log_likelihood(self, y):
@@ -132,50 +139,7 @@ class LogisticRegression(object):
 ####################################################################################
 ####################################################################################
 ####################################################################################
-def load_data(dataset):
-    ''' Loads the dataset
-
-    :type dataset: string
-    :param dataset: the path to the dataset (here MNIST)
-    '''
-
-    #############
-    # LOAD DATA #
-    #############
-
-    # Download the MNIST dataset if it is not present
-    data_dir, data_file = os.path.split(dataset)
-    if data_dir == "" and not os.path.isfile(dataset):
-        # Check if dataset is in the data directory.
-        new_path = os.path.join(
-            os.path.split(__file__)[0],
-            "..",
-            "data",
-            dataset
-        )
-        if os.path.isfile(new_path) or data_file == 'mnist.pkl.gz':
-            dataset = new_path
-
-    if (not os.path.isfile(dataset)) and data_file == 'mnist.pkl.gz':
-        import urllib
-        origin = (
-            'http://www.iro.umontreal.ca/~lisa/deep/data/mnist/mnist.pkl.gz'
-        )
-        print 'Downloading data from %s' % origin
-        urllib.urlretrieve(origin, dataset)
-
-    print '... loading data'
-
-    # Load the dataset
-    f = gzip.open(dataset, 'rb')
-    train_set, valid_set, test_set = cPickle.load(f)
-    f.close()
-    #train_set, valid_set, test_set format: tuple(input, target)
-    #input is an numpy.ndarray of 2 dimensions (a matrix)
-    #witch row's correspond to an example. target is a
-    #numpy.ndarray of 1 dimensions (vector)) that have the same length as
-    #the number of rows in the input. It should give the target
-    #target to the example with the same index in the input.
+def load_data():
 
     ####################################################################################
     ####################################################################################
@@ -204,14 +168,48 @@ def load_data(dataset):
         # lets ous get around this issue
         return shared_x, T.cast(shared_y, 'int32')
 
-    test_set_x, test_set_y = shared_dataset(test_set)
-    valid_set_x, valid_set_y = shared_dataset(valid_set)
+    dat=numpy.array(pandas.read_csv("train.csv"))
+    train_set=(dat[:,1:],dat[:,0])
+    test_set_x=numpy.array(pandas.read_csv("test.csv"))
     train_set_x, train_set_y = shared_dataset(train_set)
-
-    rval = [(train_set_x, train_set_y), (valid_set_x, valid_set_y),
-            (test_set_x, test_set_y)]
+    rval = [(train_set_x, train_set_y), test_set_x]
     return rval
 
+def gradient_updates_momentum(cost, params, learning_rate, momentum):
+    '''
+    Compute updates for gradient descent with momentum
+    
+    :parameters:
+        - cost : theano.tensor.var.TensorVariable
+            Theano cost function to minimize
+        - params : list of theano.tensor.var.TensorVariable
+            Parameters to compute gradient against
+        - learning_rate : float
+            Gradient descent learning rate
+        - momentum : float
+            Momentum parameter, should be at least 0 (standard gradient descent) and less than 1
+   
+    :returns:
+        updates : list
+            List of updates, one for each parameter
+    '''
+    # Make sure momentum is a sane value
+    assert momentum < 1 and momentum >= 0
+    # List of update steps for each parameter
+    updates = []
+    # Just gradient descent on cost
+    for param in params:
+        # For each parameter, we'll create a param_update shared variable.
+        # This variable will keep track of the parameter's update step across iterations.
+        # We initialize it to 0
+        param_update = theano.shared(param.get_value()*0., broadcastable=param.broadcastable)
+        # Each parameter is updated by taking a step in the direction of the gradient.
+        # However, we also "mix in" the previous step according to the given momentum value.
+        # Note that when updating param_update, we are using its old value and also the new gradient step.
+        updates.append((param, param - learning_rate*param_update))
+        # Note that we don't need to derive backpropagation to compute updates - just use T.grad!
+        updates.append((param_update, momentum*param_update + (1. - momentum)*T.grad(cost, param)))
+    return updates
 ####################################################################################
 ####################################################################################
 ####################################################################################
@@ -384,6 +382,9 @@ class MLP(object):
         # same holds for the function computing the number of errors
         self.errors = self.logRegressionLayer.errors
 
+        # class predictions of the trained model given outputs
+        self.predict_y = self.logRegressionLayer.predict_y
+
         # the parameters of the model are the parameters of the two layer it is
         # made out of
         self.params = self.hiddenLayer1.params + self.hiddenLayer2.params + self.logRegressionLayer.params
@@ -395,8 +396,8 @@ class MLP(object):
 ####################################################################################
 ####################################################################################
 ####################################################################################
-def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epochs=10,
-             dataset='mnist.pkl.gz', batch_size=100, n_hidden=numpy.array([500,500])):
+def test_mlp(learning_rate=0.1, momentum=0.5, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epochs=10, 
+	batch_size=100, n_hidden=numpy.array([500,500])):
     """
     Demonstrate stochastic gradient descent optimization for a multilayer
     perceptron
@@ -424,11 +425,10 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
 
 
    """
-    datasets = load_data(dataset)
+    datasets = load_data()
 
     train_set_x, train_set_y = datasets[0]
-    valid_set_x, valid_set_y = datasets[1]
-    test_set_x, test_set_y = datasets[2]
+    test_set_x = datasets[1]
 
     # compute number of minibatches for training, validation and testing
     n_train_batches = train_set_x.get_value(borrow=True).shape[0] / batch_size
@@ -455,7 +455,6 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
         n_out=10
     )
 
-    # start-snippet-4
     # the cost we minimize during training is the negative log likelihood of
     # the model plus the regularization terms (L1 and L2); cost is expressed
     # here symbolically
@@ -464,26 +463,22 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
         + L1_reg * classifier.L1
         + L2_reg * classifier.L2_sqr
     )
-    # end-snippet-4
 
     # compiling a Theano function that computes the mistakes that are made
     # by the model 
-    test_model = theano.function(
+    errors_model = theano.function(
         inputs=[],
         outputs=classifier.errors(y),
         givens={
-            x: test_set_x[:],
-            y: test_set_y[:]
+            x: train_set_x[:],
+            y: train_set_y[:]
         }
     )
 
-    validate_model = theano.function(
-        inputs=[],
-        outputs=classifier.errors(y),
-        givens={
-            x: valid_set_x[:],
-            y: valid_set_y[:]
-        }
+    # compiling a Theano function that predicts the classes for a set of inputs
+    predict_model = theano.function(
+        inputs=[x],
+        outputs=classifier.predict_y()
     )
 
     # start-snippet-5
@@ -498,10 +493,10 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
     # same length, zip generates a list C of same size, where each element
     # is a pair formed from the two lists :
     #    C = [(a1, b1), (a2, b2), (a3, b3), (a4, b4)]
-    updates = [
-        (param, param - learning_rate * gparam)
-        for param, gparam in zip(classifier.params, gparams)
-    ]
+    # updates = [
+    #     (param, param - learning_rate * gparam)
+    #     for param, gparam in zip(classifier.params, gparams)
+    # ]
 
     # compiling a Theano function `train_model` that returns the cost, but
     # in the same time updates the parameter of the model based on the rules
@@ -509,7 +504,7 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
     train_model = theano.function(
         inputs=[index],
         outputs=classifier.errors(y),
-        updates=updates,
+        updates=gradient_updates_momentum(cost, classifier.params, learning_rate, momentum),
         givens={
             x: train_set_x[index * batch_size: (index + 1) * batch_size],
             y: train_set_y[index * batch_size: (index + 1) * batch_size]
@@ -525,7 +520,7 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
     # early-stopping parameters
     improvement_threshold = 0.90  # a relative improvement of this much is
                                    # considered significant
-    validation_frequency = 1
+    validation_frequency = 10
                                   # go through this many
                                   # minibatche before checking the network
                                   # on the validation set; in this case we
@@ -552,31 +547,43 @@ def test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epo
                     learning_rate
                 )
             )
+            
+            #look at error on entire training set
+            train_loss_total=100.0*numpy.mean(errors_model())
+            print 'train_loss_total: %f' %train_loss_total
 
             if avg_train_loss>loss_threshold:
                 learning_rate*=rate_adj
 
             loss_threshold=avg_train_loss*improvement_threshold
 
-    test_loss_total=100.0*numpy.mean(test_model())
-    print 'test_loss_total: %f' %test_loss_total
+    train_loss_total=100.0*numpy.mean(errors_model())
+    print 'train_loss_total: %f' %train_loss_total
     end_time = time.clock()
     print >> sys.stderr, ('The code ran for %.2fm' % ((end_time - start_time) / 60.))
+    test_predictions=predict_model(test_set_x)
+    columns = ['ImageId', 'Label']
+    index = range(1,test_predictions.shape[0]+1) # array of numbers for the number of samples
+    df = pandas.DataFrame(columns=columns)
+    df['ImageId']=index
+    df['Label']=test_predictions
+    df.head(10)
+    df.to_csv("test_predictionsTheano.csv",sep=",",index=False)
 
 
+
 ####################################################################################
 ####################################################################################
 ####################################################################################
 ####################################################################################
 ####################################################################################
 ####################################################################################
-if __name__ == '__main__':
-    pwd_temp=os.getcwd()
-    # dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
-    dir1='/home/golbeck/Workspace/Kaggle_MNIST'
-    dir1=dir1+'/data' 
-    if pwd_temp!=dir1:
-        os.chdir(dir1)
-    data_set=dir1+'/mnist.pkl.gz'
-    params=test_mlp(learning_rate=0.1, rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epochs=20,
-             dataset=data_set, batch_size=100, n_hidden=numpy.array([10,10]))
+pwd_temp=os.getcwd()
+dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
+# dir1='/home/golbeck/Workspace/Kaggle_MNIST'
+dir1=dir1+'/data' 
+if pwd_temp!=dir1:
+    os.chdir(dir1)
+
+params=test_mlp(learning_rate=0.1, momentum=0.50,rate_adj=0.40, L1_reg=0.00, L2_reg=0.0001, n_epochs=50,
+         batch_size=100, n_hidden=numpy.array([500,500]))
