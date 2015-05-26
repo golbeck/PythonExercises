@@ -5,8 +5,7 @@ import theano.tensor as T
 import os
 import time
 import datetime
-import cPickle as pickle
-
+import cPickle
 
 ####################################################################################
 ####################################################################################
@@ -39,8 +38,8 @@ def load_data():
         return shared_x, T.cast(shared_y, 'int32')
 
     dat=np.array(pd.read_csv("train.csv"))
-    train_set=(dat[:,1:],dat[:,0])
-    test_set_x=np.array(pd.read_csv("test.csv"))
+    train_set=(dat[:,1:]/255.0,dat[:,0])
+    test_set_x=np.array(pd.read_csv("test.csv"))/255.0
     train_set_x, train_set_y = shared_dataset(train_set)
     rval = [(train_set_x, train_set_y), test_set_x]
     return rval
@@ -213,11 +212,37 @@ class MLP(object):
             activation=activation
         )
 
+        #third layer
+        self.hiddenLayer3 = HiddenLayer(
+            rng=rng,
+            input=self.hiddenLayer2.output,
+            n_in=n_hidden[1],
+            n_out=n_hidden[2],
+            activation=activation
+        )
+
+        #fourth layer
+        self.hiddenLayer4 = HiddenLayer(
+            rng=rng,
+            input=self.hiddenLayer3.output,
+            n_in=n_hidden[2],
+            n_out=n_hidden[3],
+            activation=activation
+        )
+
+        #fifth layer
+        self.hiddenLayer5 = HiddenLayer(
+            rng=rng,
+            input=self.hiddenLayer4.output,
+            n_in=n_hidden[3],
+            n_out=n_hidden[4],
+            activation=activation
+        )
         # The logistic regression layer gets as input the hidden units
         # of the final hidden layer
         self.logRegressionLayer = LogisticRegression(
-            input=self.hiddenLayer2.output,
-            n_in=n_hidden[1],
+            input=self.hiddenLayer5.output,
+            n_in=n_hidden[4],
             n_out=n_out
         )
 
@@ -226,6 +251,9 @@ class MLP(object):
         self.L1 = (
             abs(self.hiddenLayer1.W).sum()
             + abs(self.hiddenLayer2.W).sum()
+            + abs(self.hiddenLayer3.W).sum()
+            + abs(self.hiddenLayer4.W).sum()
+            + abs(self.hiddenLayer5.W).sum()
             + abs(self.logRegressionLayer.W).sum()
         )
 
@@ -234,12 +262,17 @@ class MLP(object):
         self.L2_sqr = (
             (self.hiddenLayer1.W ** 2).sum()
             + (self.hiddenLayer2.W ** 2).sum()
+            + (self.hiddenLayer3.W ** 2).sum()
+            + (self.hiddenLayer4.W ** 2).sum()
+            + (self.hiddenLayer5.W ** 2).sum()
             + (self.logRegressionLayer.W ** 2).sum()
         )
 
         # the parameters of the model are the parameters of the two layer it is
         # made out of
-        self.params = self.hiddenLayer1.params + self.hiddenLayer2.params + self.logRegressionLayer.params
+        self.params = (self.hiddenLayer1.params + self.hiddenLayer2.params 
+                        + self.hiddenLayer3.params + self.hiddenLayer4.params  
+                        + self.hiddenLayer5.params + self.logRegressionLayer.params)
 
         # for every parameter, we maintain it's last update
         # the idea here is to use "momentum"
@@ -260,6 +293,10 @@ class MLP(object):
     def mse(self, y):
         # error between output and target
         return T.mean((self.y_out - y) ** 2)
+
+    ####################################################################################
+    def predict_y(self):
+        return self.y_out
 
     ####################################################################################
     def negative_log_likelihood(self, y):
@@ -311,14 +348,17 @@ class TrainMLP(object):
         builds a MLP and trains the network
     """
     ####################################################################################
-    def __init__(self, n_in=5, rng=0.0, n_hidden=np.array([50,50]), n_out=5, learning_rate=0.01, rate_adj=0.40,
+    def __init__(self, n_in=5, rng=None, n_hidden=np.array([50,50,50]), n_out=5, learning_rate=0.01, rate_adj=0.40,
                  n_epochs=100, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.40,
-                 activation='tanh', output_type='real',
-                 final_momentum=0.9, initial_momentum=0.5,
-                 momentum_epochs=200.0,batch_size=100):
+                 activation='tanh',final_momentum=0.99, initial_momentum=0.5,
+                 momentum_epochs=400.0,batch_size=100):
 
         #initialize the inputs (tunable parameters) and activations
-        self.rng=rng
+        if rng is None:
+            self.rng = numpy.random.RandomState(1)
+        else:
+            self.rng = rng
+
         self.n_in = int(n_in)
         self.n_hidden = n_hidden
         self.n_out = int(n_out)
@@ -329,7 +369,6 @@ class TrainMLP(object):
         self.L1_reg = float(L1_reg)
         self.L2_reg = float(L2_reg)
         self.activation = activation
-        self.output_type = output_type
         self.initial_momentum = float(initial_momentum)
         self.final_momentum = float(final_momentum)
         self.momentum_epochs = int(momentum_epochs)
@@ -370,11 +409,44 @@ class TrainMLP(object):
         i = iter(weights)
 
         for param in self.MLP.params:
-            param.set_value(i.next())
+            param.set_value(i.next().get_value(borrow=True))
+
 
 
     ####################################################################################
-    def fit(self,validation_frequency=10):
+    def model_trained(self,path):
+        """ load saved parameters from .zip file specified in 'path' and predict model on test set
+        """
+
+        #load parameters saved from training
+        save_file = open(path)
+        weights=cPickle.load(save_file)
+        save_file.close()
+        #set value of MLP params using trained parameters
+        self._set_weights(weights)
+
+        #data used for the predictions
+        datasets = load_data()
+        test_set_x = datasets[1]
+
+        # compiling a Theano function that predicts the classes for a set of inputs
+        predict_model = theano.function(
+            inputs=[self.x],
+            outputs=self.MLP.predict_y()
+        )
+
+        test_predictions=predict_model(test_set_x)
+        columns = ['ImageId', 'Label']
+        index = range(1,test_predictions.shape[0]+1) # array of numbers for the number of samples
+        df = pd.DataFrame(columns=columns)
+        df['ImageId']=index
+        df['Label']=test_predictions
+        df.head(10)
+        df.to_csv("test_predictionsTheano_temp.csv",sep=",",index=False)
+
+
+    ####################################################################################
+    def fit(self,path,validation_frequency=10):
         """ Fit model
         validation_frequency : int
             in terms of number of epochs
@@ -455,6 +527,11 @@ class TrainMLP(object):
                     self.y: train_set_y[index * self.batch_size: (index + 1) * self.batch_size]
                     }
             )
+        # compiling a Theano function that predicts the classes for a set of inputs
+        predict_model = theano.function(
+            inputs=[self.x],
+            outputs=self.MLP.predict_y()
+        )
 
         ###############
         # TRAIN MODEL #
@@ -462,17 +539,20 @@ class TrainMLP(object):
         print '... training'
         #initial error is set to infinity
         loss_threshold = np.inf
+        last_train_loss = 1.0
         #start clock
         start_time = time.clock()
         epoch = 0
 
-
-        improvement_threshold=0.90
+        tol=0.005
+        improvement_threshold=0.9
         # compute number of minibatches for training, validation and testing
         n_train_batches = train_set_x.get_value(borrow=True).shape[0] / self.batch_size
 
         #train the network over epochs
-        while (epoch < self.n_epochs):
+        done_looping = False
+
+        while (epoch < self.n_epochs) and (not done_looping):
             epoch = epoch + 1
             for idx in xrange(n_train_batches):
                 effective_momentum = self.initial_momentum + (self.final_momentum - self.initial_momentum)*epoch/self.momentum_epochs
@@ -482,6 +562,7 @@ class TrainMLP(object):
                 # compute loss on training set
                 train_losses = [compute_train_error(i) for i in xrange(n_train_batches)]
                 this_train_loss = np.mean(train_losses)
+
 
                 if this_train_loss>loss_threshold:
                     self.learning_rate*=self.rate_adj
@@ -496,31 +577,69 @@ class TrainMLP(object):
                 )
 
                 loss_threshold=this_train_loss*improvement_threshold
+                if this_train_loss>0.0:
+                    pct_change=(this_train_loss-last_train_loss)/this_train_loss
+                    if abs(pct_change)<tol:
+                        done_looping=True
+                        # print 'change in training loss: %f' %pct_change*100.0
+                        # print 'this train loss %f, last train loss %g' %(this_train_loss*100.0,last_train_loss*100.0)
+                        print 'stop looping: not enough improvement over vadiation freq'
+                else:
+                    done_looping=True
+                    print '100 percent accuracy on training set reached'
+
+                last_train_loss=this_train_loss
 
             self.learning_rate *= self.learning_rate_decay
 
         end_time = time.clock()
         print ('The code ran for %.2fm' % ((end_time - start_time) / 60.))
+
+        #use fitted model on test set and save predictions for submission to Kaggle
+        save_file = open(path, 'wb')  # this will overwrite current contents
+        cPickle.dump(self.MLP.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than numpy's default
+        save_file.close()
+
+        test_predictions=predict_model(test_set_x)
+        columns = ['ImageId', 'Label']
+        index = range(1,test_predictions.shape[0]+1) # array of numbers for the number of samples
+        df = pd.DataFrame(columns=columns)
+        df['ImageId']=index
+        df['Label']=test_predictions
+        df.head(10)
+        df.to_csv("test_predictionsTheano_1500x800x300x100x100.csv",sep=",",index=False)
 ####################################################################################
 ####################################################################################
 ####################################################################################
 ####################################################################################
 def test_mlp():
     """ Test MLP. """
-    n_hidden = np.array([10,10])
+    n_hidden = np.array([10,10,10,10,10])
     n_in = 28*28
     n_out = 10
-    batch_size=100
+    batch_size=50
 
     rng = np.random.RandomState(1234)
     np.random.seed(0)
 
     model = TrainMLP(n_in=n_in, rng=rng, n_hidden=n_hidden, n_out=n_out,
-                    learning_rate=0.1, learning_rate_decay=0.99,
-                    n_epochs=20, activation='tanh',batch_size=batch_size)
+                    L1_reg=0.00, L2_reg=0.00,
+                    learning_rate=0.1, learning_rate_decay=0.99, rate_adj=0.5,                    
+                    final_momentum=0.99, initial_momentum=0.5,momentum_epochs=200.0,
+                    n_epochs=20, activation='sigmoid',batch_size=batch_size)
 
-    model.fit(validation_frequency=10)
+    path='params.zip'
+    model.fit(path=path,validation_frequency=10)
 
+
+    model_fit = TrainMLP(n_in=n_in, rng=rng, n_hidden=n_hidden, n_out=n_out,
+                    L1_reg=0.00, L2_reg=0.00,
+                    learning_rate=0.1, learning_rate_decay=0.99, rate_adj=0.5,                    
+                    final_momentum=0.99, initial_momentum=0.5,momentum_epochs=200.0,
+                    n_epochs=40, activation='sigmoid',batch_size=batch_size)
+
+    path='params.zip'
+    model_fit.model_trained(path=path)
 ####################################################################################
 ####################################################################################
 ####################################################################################
