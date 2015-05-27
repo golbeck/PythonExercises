@@ -93,8 +93,9 @@ def load_data():
         for k in range(h):
             l=j*w+k
             X_image_test[:,0,j,k]=test_in[:,l]
-
-    rval = [(train_set_x, train_set_y), X_image_test]
+    test_set_x=theano.shared(np.asarray(X_image_test,dtype=theano.config.floatX),
+                                 borrow=True)
+    rval = [(train_set_x, train_set_y), test_set_x]
     return rval
 ####################################################################################
 ####################################################################################
@@ -316,35 +317,18 @@ class CNN(object):
     def __init__(self, rng, input, n_kerns, filter_shape, pool_size,batch_size,
                     n_in,n_hidden, n_out, activation):
 
-        self.input = input
-        #number of filters for each convolution layer: np array
-        self.n_kerns=n_kerns
-        #dimension of convolutional filter
-        self.filter_shape=filter_shape
-        #downsampling dims
-        self.pool_size=pool_size
-        #batch size
-        self.batch_size=batch_size
-        #np array [width,height] pixel dims
-        self.n_in=n_in
-        #number of neurons in each hidden layer
-        self.n_hidden=n_hidden
-        #number of classes
-        self.n_out=n_out
-        self.activation=activation
-
         # Construct the first convolutional pooling layer:
         # filtering reduces the image size to (28-5+1 , 28-5+1) = (24, 24)
         # maxpooling reduces this further to (24/2, 24/2) = (12, 12)
         # 4D output tensor is thus of shape (batch_size, n_kerns[0], 12, 12)
-        layer0=self.input
+        layer0_input=input
 
         self.layer0 = LeNetConvPoolLayer(
             rng,
-            input=layer0,
-            image_shape=(self.batch_size, 1, self.n_in[0], self.n_in[1]),
-            filter_shape=(self.n_kerns[0], 1, self.filter_shape[0], self.filter_shape[1]),
-            pool_size=self.pool_size
+            input=layer0_input,
+            image_shape=(batch_size, 1, n_in[0], n_in[1]),
+            filter_shape=(n_kerns[0], 1, filter_shape[0], filter_shape[1]),
+            pool_size=pool_size
         )
 
         # Construct the second convolutional pooling layer
@@ -353,15 +337,15 @@ class CNN(object):
         # 4D output tensor is thus of shape (batch_size, n_kerns[1], 4, 4)
 
         #dimensions of image after convolution and downsampling of previous layer
-        n_w=(self.n_in[0]-self.filter_shape[0]+1)/self.pool_size[0]
-        n_h=(self.n_in[1]-self.filter_shape[1]+1)/self.pool_size[1]
+        n_w=(n_in[0]-filter_shape[0]+1)/pool_size[0]
+        n_h=(n_in[1]-filter_shape[1]+1)/pool_size[1]
 
         self.layer1 = LeNetConvPoolLayer(
             rng,
             input=self.layer0.output,
-            image_shape=(self.batch_size, self.n_kerns[0], n_w, n_h),
-            filter_shape=(self.n_kerns[1], self.n_kerns[0], self.filter_shape[0], self.filter_shape[1]),
-            pool_size=self.pool_size
+            image_shape=(batch_size, n_kerns[0], n_w, n_h),
+            filter_shape=(n_kerns[1], n_kerns[0], filter_shape[0], filter_shape[1]),
+            pool_size=pool_size
         )
 
         # the HiddenLayer being fully-connected, it operates on 2D matrices of
@@ -371,20 +355,24 @@ class CNN(object):
         self.layer2_input = self.layer1.output.flatten(2)
 
         #dimensions of image after convolution and downsampling of previous layer
-        n_w=(n_w-self.filter_shape[0]+1)/self.pool_size[0]
-        n_h=(n_h-self.filter_shape[1]+1)/self.pool_size[1]
+        n_w=(n_w-filter_shape[0]+1)/pool_size[0]
+        n_h=(n_h-filter_shape[1]+1)/pool_size[1]
 
         # construct a fully-connected sigmoidal layer
         self.layer2 = HiddenLayer(
             rng,
             input=self.layer2_input,
-            n_in=self.n_kerns[1] * n_w * n_h,
-            n_out=self.n_hidden[0],
-            activation=self.activation
+            n_in=n_kerns[1] * n_w * n_h,
+            n_out=n_hidden[0],
+            activation=activation
         )
 
         # classify the values of the fully-connected sigmoidal layer
-        self.logRegressionLayer = LogisticRegression(input=self.layer2.output, n_in=self.n_hidden[0], n_out=self.n_out)
+        self.logRegressionLayer = LogisticRegression(
+                input=self.layer2.output, 
+                n_in=n_hidden[0], 
+                n_out=n_out
+        )
 
         # L1 norm ; one regularization option is to enforce L1 norm to
         # be small
@@ -483,8 +471,8 @@ class TrainCNN(object):
         builds a CNN and trains the network
     """
     ####################################################################################
-    def __init__(self, n_kerns,filter_shape,pool_size,n_in=5, rng=None, 
-                 n_hidden=np.array([50]), n_out=5, learning_rate=0.01, rate_adj=0.40,
+    def __init__(self, n_kerns=[5,10],filter_shape=[4,4],pool_size=(2,2),n_in=5, rng=None, 
+                 n_hidden=np.array([50]), n_out=5, learning_rate=0.1, rate_adj=0.40,
                  n_epochs=100, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.40,
                  activation='tanh',final_momentum=0.99, initial_momentum=0.5,
                  momentum_epochs=400.0,batch_size=100):
@@ -662,11 +650,14 @@ class TrainCNN(object):
                     self.x: train_set_x[index * self.batch_size: (index + 1) * self.batch_size],
                     self.y: train_set_y[index * self.batch_size: (index + 1) * self.batch_size]
                     }
-            )
+        )
         # compiling a Theano function that predicts the classes for a set of inputs
         predict_model = theano.function(
-            inputs=[self.x],
-            outputs=self.CNN.predict_y()
+            inputs=[index],
+            outputs=self.CNN.predict_y(),
+            givens={
+                self.x: test_set_x[index * self.batch_size: (index + 1) * self.batch_size]
+                }
         )
 
         ###############
@@ -684,7 +675,7 @@ class TrainCNN(object):
         improvement_threshold=0.9
         # compute number of minibatches for training, validation and testing
         n_train_batches = train_set_x.get_value(borrow=True).shape[0] / self.batch_size
-
+        n_test_batches = test_set_x.get_value(borrow=True).shape[0] / self.batch_size
         #train the network over epochs
         done_looping = False
 
@@ -736,7 +727,8 @@ class TrainCNN(object):
         cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
         save_file.close()
 
-        test_predictions=predict_model(test_set_x)
+        #for test set predictions, update batch size to the full set
+        test_predictions=np.array([predict_model(i) for i in xrange(n_test_batches)]).ravel()
         columns = ['ImageId', 'Label']
         index = range(1,test_predictions.shape[0]+1) # array of numbers for the number of samples
         df = pd.DataFrame(columns=columns)
@@ -749,21 +741,24 @@ class TrainCNN(object):
 ####################################################################################
 def test_CNN():
     """ Test CNN. """
-    n_hidden = np.array([100])
+    learning_rate=0.1
+    n_kerns=[20,30]
+    n_hidden = np.array([800])
     n_in = np.array([28,28])
     n_out = 10
     batch_size=50
-    filter_shape=[5,5]
+    filter_shape=[4,4]
     pool_size=(2,2)
+    n_epochs=200
 
     rng = np.random.RandomState(1234)
     np.random.seed(0)
 
-    model = TrainCNN(n_kerns=[20, 50],filter_shape=filter_shape,pool_size=pool_size,n_in=n_in, rng=rng, 
-                 n_hidden=n_hidden, n_out=n_out, learning_rate=0.01, rate_adj=0.40,
-                 n_epochs=100, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.40,
+    model = TrainCNN(n_kerns=n_kerns,filter_shape=filter_shape,pool_size=pool_size,n_in=n_in, rng=rng, 
+                 n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=0.40,
+                 n_epochs=n_epochs, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.99,
                  activation='sigmoid',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=400.0,batch_size=100)
+                 momentum_epochs=400.0,batch_size=batch_size)
 
     path='params.zip'
     model.fit(path=path,validation_frequency=10)
@@ -783,8 +778,8 @@ def test_CNN():
 ####################################################################################
 if __name__ == "__main__":
     pwd_temp=os.getcwd()
-    dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
-    # dir1='/home/golbeck/Workspace/Kaggle_MNIST'
+    # dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
+    dir1='/home/golbeck/Workspace/Kaggle_MNIST'
     dir1=dir1+'/data' 
     if pwd_temp!=dir1:
         os.chdir(dir1)
