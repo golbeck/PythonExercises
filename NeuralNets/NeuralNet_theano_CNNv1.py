@@ -367,10 +367,28 @@ class CNN(object):
             activation=activation
         )
 
+        # construct a fully-connected sigmoidal layer
+        self.layer3 = HiddenLayer(
+            rng,
+            input=self.layer2.output,
+            n_in=n_hidden[0],
+            n_out=n_hidden[1],
+            activation=activation
+        )
+
+        # construct a fully-connected sigmoidal layer
+        # self.layer4 = HiddenLayer(
+        #     rng,
+        #     input=self.layer3.output,
+        #     n_in=n_hidden[1],
+        #     n_out=n_hidden[2],
+        #     activation=activation
+        # )
+
         # classify the values of the fully-connected sigmoidal layer
         self.logRegressionLayer = LogisticRegression(
-                input=self.layer2.output, 
-                n_in=n_hidden[0], 
+                input=self.layer3.output, 
+                n_in=n_hidden[1], 
                 n_out=n_out
         )
 
@@ -380,6 +398,8 @@ class CNN(object):
             abs(self.layer0.W).sum()
             + abs(self.layer1.W).sum()
             + abs(self.layer2.W).sum()
+            + abs(self.layer3.W).sum()
+            # + abs(self.layer4.W).sum()
             + abs(self.logRegressionLayer.W).sum()
         )
 
@@ -389,13 +409,17 @@ class CNN(object):
             (self.layer0.W ** 2).sum()
             + (self.layer1.W ** 2).sum()
             + (self.layer2.W ** 2).sum()
+            + (self.layer3.W ** 2).sum()
+            # + (self.layer4.W ** 2).sum()
             + (self.logRegressionLayer.W ** 2).sum()
         )
 
         # the parameters of the model are the parameters of the two layer it is
         # made out of
         self.params = (self.layer0.params + self.layer1.params 
-                        + self.layer2.params + self.logRegressionLayer.params)
+                        + self.layer2.params + self.layer3.params
+                        # + self.layer4.params 
+                        + self.logRegressionLayer.params)
 
         # for every parameter, we maintain it's last update
         # the idea here is to use "momentum"
@@ -472,7 +496,7 @@ class TrainCNN(object):
     """
     ####################################################################################
     def __init__(self, n_kerns=[5,10],filter_shape=[4,4],pool_size=(2,2),n_in=5, rng=None, 
-                 n_hidden=np.array([50]), n_out=5, learning_rate=0.1, rate_adj=0.40,
+                 n_hidden=np.array([50,50]), n_out=5, learning_rate=0.1, rate_adj=0.40,
                  n_epochs=100, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.40,
                  activation='tanh',final_momentum=0.99, initial_momentum=0.5,
                  momentum_epochs=400.0,batch_size=100):
@@ -742,16 +766,16 @@ class TrainCNN(object):
 def test_CNN():
     """ Test CNN. """
     learning_rate=0.1
-    n_kerns=[20,30]
-    n_hidden = np.array([800])
+    n_kerns=[50,50]
+    n_hidden = np.array([800,800])
     n_in = np.array([28,28])
     n_out = 10
     batch_size=50
     filter_shape=[4,4]
     pool_size=(2,2)
-    n_epochs=200
+    n_epochs=400
 
-    rng = np.random.RandomState(1234)
+    rng = np.random.RandomState(2345)
     np.random.seed(0)
 
     model = TrainCNN(n_kerns=n_kerns,filter_shape=filter_shape,pool_size=pool_size,n_in=n_in, rng=rng, 
