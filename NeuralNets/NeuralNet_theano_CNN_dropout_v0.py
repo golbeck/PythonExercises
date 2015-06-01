@@ -81,8 +81,13 @@ def load_data():
             l=j*w+k
             X_image[:,0,j,k]=X_in[:,l]
 
-    train_set=(X_image,dat[:,0])
+    frac=0.95
+    n_train_set=int(0.95*n)
+    train_set=(X_image[range(n_train_set),:],dat[range(n_train_set),0])
     train_set_x, train_set_y = shared_dataset(train_set)
+
+    valid_set=(X_image[range(n_train_set,n),:],dat[range(n_train_set,n),0])
+    valid_set_x, valid_set_y = shared_dataset(valid_set)
 
     #convert test set to array of 3D matrices: (1,28,28)
     test_in=np.array(pd.read_csv("test.csv"))/255.0
@@ -95,8 +100,22 @@ def load_data():
             X_image_test[:,0,j,k]=test_in[:,l]
     test_set_x=theano.shared(np.asarray(X_image_test,dtype=theano.config.floatX),
                                  borrow=True)
-    rval = [(train_set_x, train_set_y), test_set_x]
+    rval = [(train_set_x, train_set_y),(valid_set_x, valid_set_y), test_set_x]
     return rval
+####################################################################################
+####################################################################################
+####################################################################################
+def _dropout_from_layer(rng, layer, p):
+    """p is the probablity of dropping a unit
+    """
+    srng = theano.tensor.shared_randomstreams.RandomStreams(
+            rng.randint(999999))
+    # p=1-p because 1's indicate keep and p is prob of dropping
+    mask = srng.binomial(n=1, p=p, size=layer.shape)
+    # The cast is important because
+    # int * float32 = float64 which pulls things off the gpu
+    output = layer * T.cast(mask, theano.config.floatX)
+    return output
 ####################################################################################
 ####################################################################################
 ####################################################################################
@@ -165,7 +184,7 @@ class LogisticRegression(object):
 class HiddenLayer(object):
     ####################################################################################
     def __init__(self, rng, input, n_in, n_out, W=None, b=None,W_update=None,b_update=None,
-                 activation=T.tanh):
+                 activation=T.tanh, p_in):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
         sigmoidal activation function. Weight matrix W is of shape (n_in,n_out)
@@ -190,6 +209,9 @@ class HiddenLayer(object):
         :type activation: theano.Op or function
         :param activation: Non linearity to be applied in the hidden
                            layer
+
+        :type p_in: float
+        :param p_in: dropout probability
         """
         self.input = input
         # end-snippet-1
@@ -227,6 +249,9 @@ class HiddenLayer(object):
             lin_output if activation is None
             else activation(lin_output)
         )
+
+        if p_in is not None:
+            self.output = _dropout_from_layer(rng, self.output, p_in)
         # parameters of the model
         self.params = [self.W, self.b]
 
@@ -236,7 +261,7 @@ class HiddenLayer(object):
 class LeNetConvPoolLayer(object):
     """Pool Layer of a convolutional network """
     ####################################################################################
-    def __init__(self, rng, input, filter_shape, image_shape, pool_size):
+    def __init__(self, rng, input, filter_shape, image_shape, pool_size, p_in):
         """
         Allocate a LeNetConvPoolLayer with shared variable internal parameters.
 
@@ -256,6 +281,9 @@ class LeNetConvPoolLayer(object):
 
         :type poolsize: tuple or list of length 2
         :param poolsize: the downsampling (pooling) factor (#rows, #cols)
+
+        :type p_in: float
+        :param p_in: dropout probability
         """
 
         assert image_shape[1] == filter_shape[1]
@@ -291,6 +319,10 @@ class LeNetConvPoolLayer(object):
             image_shape=image_shape
         )
 
+
+        if p_in[0] is not None:
+            conv_out = _dropout_from_layer(rng, conv_out, p_in[0])
+
         # downsample each feature map individually, using maxpooling
         pooled_out = downsample.max_pool_2d(
             input=conv_out,
@@ -303,6 +335,8 @@ class LeNetConvPoolLayer(object):
         # thus be broadcasted across mini-batches and feature map
         # width & height
         self.output = T.tanh(pooled_out + self.b.dimshuffle('x', 0, 'x', 'x'))
+        if p_in[1] is not None:
+            self.output = _dropout_from_layer(rng, self.output, p_in[1])
 
         # store parameters of this layer
         self.params = [self.W, self.b]
@@ -315,20 +349,22 @@ class CNN(object):
     """convolutional neural network """
     ####################################################################################
     def __init__(self, rng, input, n_kerns, filter_shape, pool_size,batch_size,
-                    n_in,n_hidden, n_out, activation):
+                    n_in,n_hidden, n_out, activation, p_in):
 
         # Construct the first convolutional pooling layer:
         # filtering reduces the image size to (28-5+1 , 28-5+1) = (24, 24)
         # maxpooling reduces this further to (24/2, 24/2) = (12, 12)
         # 4D output tensor is thus of shape (batch_size, n_kerns[0], 12, 12)
         layer0_input=input
+        layer0_input = _dropout_from_layer(rng, layer0_input, p_in[0])
 
         self.layer0 = LeNetConvPoolLayer(
             rng,
             input=layer0_input,
             image_shape=(batch_size, 1, n_in[0], n_in[1]),
             filter_shape=(n_kerns[0], 1, filter_shape[0], filter_shape[1]),
-            pool_size=pool_size
+            pool_size=pool_size,
+            p_in=[p_in[1],p_in[2]]
         )
 
         # Construct the second convolutional pooling layer
@@ -345,7 +381,8 @@ class CNN(object):
             input=self.layer0.output,
             image_shape=(batch_size, n_kerns[0], n_w, n_h),
             filter_shape=(n_kerns[1], n_kerns[0], filter_shape[0], filter_shape[1]),
-            pool_size=pool_size
+            pool_size=pool_size,
+            p_in=[p_in[3],p_in[4]]
         )
 
         # the HiddenLayer being fully-connected, it operates on 2D matrices of
@@ -364,7 +401,8 @@ class CNN(object):
             input=self.layer2_input,
             n_in=n_kerns[1] * n_w * n_h,
             n_out=n_hidden[0],
-            activation=activation
+            activation=activation,
+            p_in=p_in[5]
         )
 
         # construct a fully-connected sigmoidal layer
@@ -374,6 +412,7 @@ class CNN(object):
             n_in=n_hidden[0],
             n_out=n_hidden[1],
             activation=activation
+            p_in=p_in[6]
         )
 
         # construct a fully-connected sigmoidal layer
@@ -382,14 +421,15 @@ class CNN(object):
             input=self.layer3.output,
             n_in=n_hidden[1],
             n_out=n_hidden[2],
-            activation=activation
+            activation=activation,
+            p_in=p_in[7]
         )
 
         # classify the values of the fully-connected sigmoidal layer
         self.logRegressionLayer = LogisticRegression(
-                input=self.layer4.output, 
-                n_in=n_hidden[2], 
-                n_out=n_out
+            input=self.layer4.output, 
+            n_in=n_hidden[2], 
+            n_out=n_out
         )
 
         # L1 norm ; one regularization option is to enforce L1 norm to
@@ -499,7 +539,7 @@ class TrainCNN(object):
                  n_hidden=np.array([50,50]), n_out=5, learning_rate=0.1, rate_adj=0.40,
                  n_epochs=100, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.40,
                  activation='tanh',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=400.0,batch_size=100):
+                 momentum_epochs=400.0,batch_size=100,p_in=[0.9,0.7]):
 
         #initialize the inputs (tunable parameters) and activations
         if rng is None:
@@ -531,6 +571,7 @@ class TrainCNN(object):
         self.final_momentum = float(final_momentum)
         self.momentum_epochs = int(momentum_epochs)
         self.batch_size=int(batch_size)
+        self.p_in=p_in
 
         #build the network
         self.ready()
@@ -556,7 +597,7 @@ class TrainCNN(object):
 
         self.CNN = CNN(rng=self.rng, input=self.x, n_kerns=self.n_kerns, filter_shape=self.filter_shape, 
                         pool_size=self.pool_size,batch_size=self.batch_size,n_in=self.n_in,
-                        n_hidden=self.n_hidden, n_out=self.n_out,activation=activation)
+                        n_hidden=self.n_hidden, n_out=self.n_out,activation=activation,p_in=self.p_in)
 
     ####################################################################################
     def _set_weights(self, weights):
@@ -613,9 +654,11 @@ class TrainCNN(object):
         datasets = load_data()
 
         train_set_x, train_set_y = datasets[0]
-        test_set_x = datasets[1]
+        valid_set_x, valid_set_y = datasets[1]
+        test_set_x = datasets[2]
         #number of observations
         n_train = train_set_x.get_value(borrow=True).shape[0]
+        n_valid = valid_set_x.get_value(borrow=True).shape[0]
 
         ######################
         # BUILD ACTUAL MODEL #
@@ -642,6 +685,16 @@ class TrainCNN(object):
                 givens={
                     self.x: train_set_x[index * self.batch_size: (index + 1) * self.batch_size],
                     self.y: train_set_y[index * self.batch_size: (index + 1) * self.batch_size]
+                    }
+            )
+
+        #given training data, compute the error
+        compute_valid_error = theano.function(
+                inputs=[index],
+                outputs=self.CNN.errors(self.y),
+                givens={
+                    self.x: valid_set_x[index * self.batch_size: (index + 1) * self.batch_size],
+                    self.y: valid_set_y[index * self.batch_size: (index + 1) * self.batch_size]
                     }
             )
 
@@ -688,17 +741,18 @@ class TrainCNN(object):
         # TRAIN MODEL #
         ###############
         print '... training'
-        #initial error is set to infinity
-        loss_threshold = np.inf
-        last_train_loss = 1.0
+        #initial error is set to 100%
+        best_valid_loss = 1.0
         #start clock
         start_time = time.clock()
         epoch = 0
 
         tol=0.005
         improvement_threshold=0.9
+        patience=20
         # compute number of minibatches for training, validation and testing
         n_train_batches = train_set_x.get_value(borrow=True).shape[0] / self.batch_size
+        n_valid_batches = valid_set_x.get_value(borrow=True).shape[0] / self.batch_size
         n_test_batches = test_set_x.get_value(borrow=True).shape[0] / self.batch_size
         #train the network over epochs
         done_looping = False
@@ -710,47 +764,62 @@ class TrainCNN(object):
                 example_cost = train_model(idx, self.learning_rate,effective_momentum)
 
             if epoch % validation_frequency == 0:
-                # compute loss on training set
-                train_losses = [compute_train_error(i) for i in xrange(n_train_batches)]
-                this_train_loss = np.mean(train_losses)
+                # compute loss on validation set
+                valid_losses = [compute_valid_error(i) for i in xrange(n_valid_batches)]
+                this_valid_loss = np.mean(valid_losses)
 
+                # if we got the best validation score until now
+                if this_valid_loss < best_valid_loss:
+                    #improve patience if loss improvement is good enough
+                    if (
+                        this_valid_loss < best_valid_loss *
+                        improvement_threshold
+                    ):
+                        patience += 2*validation_frequency
+                        #save parameters if best performance
+                        save_file = open(path, 'wb')  # this will overwrite current contents
+                        cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
+                        save_file.close()
 
-                if this_train_loss>loss_threshold:
+                    best_valid_loss = this_valid_loss
+                else:
+                    #if no improvement seen, adjust learning rate
                     self.learning_rate*=self.rate_adj
 
                 print(
-                    'epoch %i, train error %f, learning rate %f' %
+                    'epoch %i, validation error %f, best validation error %f, learning rate %f' %
                     (
                         epoch,
-                        this_train_loss * 100.,
+                        this_valid_loss * 100.,
+                        best_valid_loss *100,
                         self.learning_rate
                     )
                 )
 
-                loss_threshold=this_train_loss*improvement_threshold
-                if this_train_loss>0.0:
-                    pct_change=(this_train_loss-last_train_loss)/this_train_loss
-                    if abs(pct_change)<tol:
-                        done_looping=True
-                        # print 'change in training loss: %f' %pct_change*100.0
-                        # print 'this train loss %f, last train loss %g' %(this_train_loss*100.0,last_train_loss*100.0)
-                        print 'stop looping: not enough improvement over vadiation freq'
-                else:
-                    done_looping=True
-                    print '100 percent accuracy on training set reached'
-
-                last_train_loss=this_train_loss
+            if epoch>patience:
+                done_looping = True
+                break
 
             self.learning_rate *= self.learning_rate_decay
+
+
+        # compute loss on training set
+        train_losses = [compute_train_error(i) for i in xrange(n_train_batches)]
+        this_train_loss = np.mean(train_losses)
+        print(
+                'training error %f' %this_train_loss
+            )
 
         end_time = time.clock()
         print ('The code ran for %.2fm' % ((end_time - start_time) / 60.))
 
-        #use fitted model on test set and save predictions for submission to Kaggle
-        save_file = open(path, 'wb')  # this will overwrite current contents
-        cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
-        save_file.close()
 
+        #load parameters for best validation set performance
+        save_file = open(path)
+        weights=cPickle.load(save_file)
+        save_file.close()
+        #set value of CNN params 
+        self._set_weights(weights)
         #for test set predictions, update batch size to the full set
         test_predictions=np.array([predict_model(i) for i in xrange(n_test_batches)]).ravel()
         columns = ['ImageId', 'Label']
@@ -774,6 +843,8 @@ def test_CNN():
     filter_shape=[5,5]
     pool_size=(2,2)
     n_epochs=400
+    p_in=0.7*np.ones(1+2+len(n_hidden))
+    p_in[0]=0.9
 
     rng = np.random.RandomState(2479)
     np.random.seed(0)
@@ -782,7 +853,7 @@ def test_CNN():
                  n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=0.40,
                  n_epochs=n_epochs, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.99,
                  activation='sigmoid',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=400.0,batch_size=batch_size)
+                 momentum_epochs=100.0,batch_size=batch_size,p_in=p_in)
 
     path='params.zip'
     model.fit(path=path,validation_frequency=10)

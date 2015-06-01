@@ -81,8 +81,13 @@ def load_data():
             l=j*w+k
             X_image[:,0,j,k]=X_in[:,l]
 
-    train_set=(X_image,dat[:,0])
+    frac=0.95
+    n_train_set=int(0.95*n)
+    train_set=(X_image[range(n_train_set),:],dat[range(n_train_set),0])
     train_set_x, train_set_y = shared_dataset(train_set)
+
+    valid_set=(X_image[range(n_train_set,n),:],dat[range(n_train_set,n),0])
+    valid_set_x, valid_set_y = shared_dataset(valid_set)
 
     #convert test set to array of 3D matrices: (1,28,28)
     test_in=np.array(pd.read_csv("test.csv"))/255.0
@@ -95,7 +100,7 @@ def load_data():
             X_image_test[:,0,j,k]=test_in[:,l]
     test_set_x=theano.shared(np.asarray(X_image_test,dtype=theano.config.floatX),
                                  borrow=True)
-    rval = [(train_set_x, train_set_y), test_set_x]
+    rval = [(train_set_x, train_set_y),(valid_set_x, valid_set_y), test_set_x]
     return rval
 ####################################################################################
 ####################################################################################
@@ -613,9 +618,11 @@ class TrainCNN(object):
         datasets = load_data()
 
         train_set_x, train_set_y = datasets[0]
-        test_set_x = datasets[1]
+        valid_set_x, valid_set_y = datasets[1]
+        test_set_x = datasets[2]
         #number of observations
         n_train = train_set_x.get_value(borrow=True).shape[0]
+        n_valid = valid_set_x.get_value(borrow=True).shape[0]
 
         ######################
         # BUILD ACTUAL MODEL #
@@ -642,6 +649,16 @@ class TrainCNN(object):
                 givens={
                     self.x: train_set_x[index * self.batch_size: (index + 1) * self.batch_size],
                     self.y: train_set_y[index * self.batch_size: (index + 1) * self.batch_size]
+                    }
+            )
+
+        #given training data, compute the error
+        compute_valid_error = theano.function(
+                inputs=[index],
+                outputs=self.CNN.errors(self.y),
+                givens={
+                    self.x: valid_set_x[index * self.batch_size: (index + 1) * self.batch_size],
+                    self.y: valid_set_y[index * self.batch_size: (index + 1) * self.batch_size]
                     }
             )
 
@@ -688,17 +705,19 @@ class TrainCNN(object):
         # TRAIN MODEL #
         ###############
         print '... training'
-        #initial error is set to infinity
-        loss_threshold = np.inf
-        last_train_loss = 1.0
+        #initial error is set to 100%
+        best_valid_loss = 1.0
         #start clock
         start_time = time.clock()
         epoch = 0
 
         tol=0.005
         improvement_threshold=0.9
+        patience_init=20
+        patience=patience_init
         # compute number of minibatches for training, validation and testing
         n_train_batches = train_set_x.get_value(borrow=True).shape[0] / self.batch_size
+        n_valid_batches = valid_set_x.get_value(borrow=True).shape[0] / self.batch_size
         n_test_batches = test_set_x.get_value(borrow=True).shape[0] / self.batch_size
         #train the network over epochs
         done_looping = False
@@ -709,48 +728,63 @@ class TrainCNN(object):
                 effective_momentum = self.initial_momentum + (self.final_momentum - self.initial_momentum)*epoch/self.momentum_epochs
                 example_cost = train_model(idx, self.learning_rate,effective_momentum)
 
-            if epoch % validation_frequency == 0:
-                # compute loss on training set
-                train_losses = [compute_train_error(i) for i in xrange(n_train_batches)]
-                this_train_loss = np.mean(train_losses)
+            if (epoch % validation_frequency) and (epoch>=patience_init-1) == 0:
+                # compute loss on validation set
+                valid_losses = [compute_valid_error(i) for i in xrange(n_valid_batches)]
+                this_valid_loss = np.mean(valid_losses)
 
+                # if we got the best validation score until now
+                if this_valid_loss < best_valid_loss:
+                    #improve patience if loss improvement is good enough
+                    if (
+                        this_valid_loss < best_valid_loss *
+                        improvement_threshold
+                    ):
+                        patience += 2*validation_frequency
+                        #save parameters if best performance
+                        save_file = open(path, 'wb')  # this will overwrite current contents
+                        cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
+                        save_file.close()
 
-                if this_train_loss>loss_threshold:
+                    best_valid_loss = this_valid_loss
+                else:
+                    #if no improvement seen, adjust learning rate
                     self.learning_rate*=self.rate_adj
 
                 print(
-                    'epoch %i, train error %f, learning rate %f' %
+                    'epoch %i, validation error %f, best validation error %f, learning rate %f' %
                     (
                         epoch,
-                        this_train_loss * 100.,
+                        this_valid_loss * 100.,
+                        best_valid_loss *100,
                         self.learning_rate
                     )
                 )
 
-                loss_threshold=this_train_loss*improvement_threshold
-                if this_train_loss>0.0:
-                    pct_change=(this_train_loss-last_train_loss)/this_train_loss
-                    if abs(pct_change)<tol:
-                        done_looping=True
-                        # print 'change in training loss: %f' %pct_change*100.0
-                        # print 'this train loss %f, last train loss %g' %(this_train_loss*100.0,last_train_loss*100.0)
-                        print 'stop looping: not enough improvement over vadiation freq'
-                else:
-                    done_looping=True
-                    print '100 percent accuracy on training set reached'
-
-                last_train_loss=this_train_loss
+            if epoch>patience:
+                done_looping = True
+                break
 
             self.learning_rate *= self.learning_rate_decay
+
+
+        # compute loss on training set
+        train_losses = [compute_train_error(i) for i in xrange(n_train_batches)]
+        this_train_loss = np.mean(train_losses)
+        print(
+                'training error %f' %this_train_loss
+            )
 
         end_time = time.clock()
         print ('The code ran for %.2fm' % ((end_time - start_time) / 60.))
 
-        #use fitted model on test set and save predictions for submission to Kaggle
-        save_file = open(path, 'wb')  # this will overwrite current contents
-        cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
-        save_file.close()
 
+        #load parameters for best validation set performance
+        save_file = open(path)
+        weights=cPickle.load(save_file)
+        save_file.close()
+        #set value of CNN params 
+        self._set_weights(weights)
         #for test set predictions, update batch size to the full set
         test_predictions=np.array([predict_model(i) for i in xrange(n_test_batches)]).ravel()
         columns = ['ImageId', 'Label']
@@ -782,7 +816,7 @@ def test_CNN():
                  n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=0.40,
                  n_epochs=n_epochs, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.99,
                  activation='sigmoid',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=400.0,batch_size=batch_size)
+                 momentum_epochs=100.0,batch_size=batch_size)
 
     path='params.zip'
     model.fit(path=path,validation_frequency=10)
