@@ -771,11 +771,19 @@ def test_CNN():
     n_in = np.array([28,28])
     n_out = 10
     batch_size=50
+<<<<<<< HEAD
     filter_shape=[5,5]
     pool_size=(2,2)
     n_epochs=400
 
     rng = np.random.RandomState(2479)
+=======
+    filter_shape=[3,3]
+    pool_size=(2,2)
+    n_epochs=400
+
+    rng = np.random.RandomState(6789)
+>>>>>>> f060f44a3ce772e60f2dbdd9d341d430e761c89f
     np.random.seed(0)
 
     model = TrainCNN(n_kerns=n_kerns,filter_shape=filter_shape,pool_size=pool_size,n_in=n_in, rng=rng, 
@@ -802,8 +810,8 @@ def test_CNN():
 ####################################################################################
 if __name__ == "__main__":
     pwd_temp=os.getcwd()
-    # dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
-    dir1='/home/golbeck/Workspace/Kaggle_MNIST'
+    dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
+    # dir1='/home/golbeck/Workspace/Kaggle_MNIST'
     dir1=dir1+'/data' 
     if pwd_temp!=dir1:
         os.chdir(dir1)
