@@ -728,7 +728,7 @@ class TrainCNN(object):
                 effective_momentum = self.initial_momentum + (self.final_momentum - self.initial_momentum)*epoch/self.momentum_epochs
                 example_cost = train_model(idx, self.learning_rate,effective_momentum)
 
-            if (epoch % validation_frequency) and (epoch>=patience_init-1) == 0:
+            if (epoch % validation_frequency == 0):
                 # compute loss on validation set
                 valid_losses = [compute_valid_error(i) for i in xrange(n_valid_batches)]
                 this_valid_loss = np.mean(valid_losses)
@@ -740,7 +740,9 @@ class TrainCNN(object):
                         this_valid_loss < best_valid_loss *
                         improvement_threshold
                     ):
-                        patience += 2*validation_frequency
+                        #only adjust patience if above the min number of epochs (patience_init)
+                        if epoch>=patience_init:
+                            patience += validation_frequency
                         #save parameters if best performance
                         save_file = open(path, 'wb')  # this will overwrite current contents
                         cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
@@ -752,16 +754,17 @@ class TrainCNN(object):
                     self.learning_rate*=self.rate_adj
 
                 print(
-                    'epoch %i, validation error %f, best validation error %f, learning rate %f' %
+                    'epoch %i, validation error %f, best validation error %f, learning rate %f, patience %i' %
                     (
                         epoch,
                         this_valid_loss * 100.,
                         best_valid_loss *100,
-                        self.learning_rate
+                        self.learning_rate,
+                        patience
                     )
                 )
 
-            if epoch>patience:
+            if epoch>patience-1:
                 done_looping = True
                 break
 
@@ -800,26 +803,29 @@ class TrainCNN(object):
 def test_CNN():
     """ Test CNN. """
     learning_rate=0.1
+    L1_reg=0.001
+    L2_reg=0.0
     n_kerns=[50,80]
-    n_hidden = np.array([1500,1000,300])
+    n_hidden = np.array([1500,800,300])
     n_in = np.array([28,28])
     n_out = 10
     batch_size=50
     filter_shape=[5,5]
     pool_size=(2,2)
     n_epochs=400
+    rate_adj=0.6
 
     rng = np.random.RandomState(2479)
     np.random.seed(0)
 
     model = TrainCNN(n_kerns=n_kerns,filter_shape=filter_shape,pool_size=pool_size,n_in=n_in, rng=rng, 
-                 n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=0.40,
-                 n_epochs=n_epochs, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.99,
+                 n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=rate_adj,
+                 n_epochs=n_epochs, L1_reg=0.00, L2_reg=L2_reg, learning_rate_decay=0.99,
                  activation='sigmoid',final_momentum=0.99, initial_momentum=0.5,
                  momentum_epochs=100.0,batch_size=batch_size)
 
     path='params.zip'
-    model.fit(path=path,validation_frequency=10)
+    model.fit(path=path,validation_frequency=5)
 
 
     # model_fit = TrainMLP(n_in=n_in, rng=rng, n_hidden=n_hidden, n_out=n_out,
