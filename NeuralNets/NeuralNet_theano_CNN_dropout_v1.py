@@ -132,7 +132,7 @@ class LogisticRegression(object):
 
     ####################################################################################
     ####################################################################################
-    def __init__(self, input, n_in, n_out):
+    def __init__(self, input, n_in, n_out, W=None, b=None):
         """ Initialize the parameters of the logistic regression
 
         :type input: theano.tensor.TensorType
@@ -148,19 +148,16 @@ class LogisticRegression(object):
                       which the labels lie
 
         """
-        # start-snippet-1
-        # initialize with 0 the weights W as a matrix of shape (n_in, n_out)
-        self.W = theano.shared(
-            value=np.zeros((n_in, n_out),dtype=theano.config.floatX),
-            name='W',
-            borrow=True
-        )
-        # initialize the baises b as a vector of n_out 0s
-        self.b = theano.shared(
-            value=np.zeros((n_out,),dtype=theano.config.floatX),
-            name='b',
-            borrow=True
-        )
+        if W is None:
+            W_values = np.zeros((n_in, n_out),dtype=theano.config.floatX)
+            W = theano.shared(value=W_values, name='W', borrow=True)
+
+        if b is None:
+            b_values = np.zeros((n_out,), dtype=theano.config.floatX)
+            b = theano.shared(value=b_values, name='b', borrow=True)
+
+        self.W = W
+        self.b = b
 
         # symbolic expression for computing the matrix of class-membership
         # probabilities
@@ -183,24 +180,9 @@ class LogisticRegression(object):
 ####################################################################################
 ####################################################################################
 ####################################################################################
-class DropoutHiddenLayer(HiddenLayer):
-    #hidden layer class with dropout applied to the output
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None,W_update=None,b_update=None,
-                 activation, p_in):
-        super(DropoutHiddenLayer,self).__init__(
-            rng=rng, input=input, n_in=n_in, n_out=n_out, W=W, b=b,W_update=W_update,b_update=b_update,
-                 activation=activation)
-        #apply dropout to the output of the hidden layer
-        self.output = _dropout_from_layer(rng,self.output,p=p_in)
-
-
-####################################################################################
-####################################################################################
-####################################################################################
 class HiddenLayer(object):
     ####################################################################################
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None,W_update=None,b_update=None,
-                 activation=T.tanh):
+    def __init__(self, rng, input, n_in, n_out, W=None, b=None,activation=T.tanh):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
         sigmoidal activation function. Weight matrix W is of shape (n_in,n_out)
@@ -264,14 +246,23 @@ class HiddenLayer(object):
         )
         # parameters of the model
         self.params = [self.W, self.b]
-
+####################################################################################
+####################################################################################
+####################################################################################
+class DropoutHiddenLayer(HiddenLayer):
+    #hidden layer class with dropout applied to the output
+    def __init__(self, rng, input, n_in, n_out, p_in, W=None, b=None, activation=T.tanh):
+        super(DropoutHiddenLayer, self).__init__(
+            rng=rng, input=input, n_in=n_in, n_out=n_out, W=W, b=b, activation=activation)
+        #apply dropout to the output of the hidden layer
+        self.output = _dropout_from_layer(rng,self.output,p=p_in)
 ####################################################################################
 ####################################################################################
 ####################################################################################
 class LeNetConvPoolLayer(object):
     """Pool Layer of a convolutional network """
     ####################################################################################
-    def __init__(self, rng, input, filter_shape, image_shape, pool_size):
+    def __init__(self, rng, input, filter_shape, image_shape, pool_size, W=None, b=None):
         """
         Allocate a LeNetConvPoolLayer with shared variable internal parameters.
 
@@ -296,27 +287,32 @@ class LeNetConvPoolLayer(object):
         assert image_shape[1] == filter_shape[1]
         self.input = input
 
-        # there are "num input feature maps * filter height * filter width"
-        # inputs to each hidden unit
-        fan_in = np.prod(filter_shape[1:])
-        # each unit in the lower layer receives a gradient from:
-        # "num output feature maps * filter height * filter width" /
-        #   pooling size
-        fan_out = (filter_shape[0] * np.prod(filter_shape[2:]) /
-                   np.prod(pool_size))
-        # initialize weights with random weights
-        W_bound = np.sqrt(6. / (fan_in + fan_out))
-        self.W = theano.shared(
-            np.asarray(
+        
+        if W is None:
+            # there are "num input feature maps * filter height * filter width"
+            # inputs to each hidden unit
+            fan_in = np.prod(filter_shape[1:])
+            # each unit in the lower layer receives a gradient from:
+            # "num output feature maps * filter height * filter width" /
+            #   pooling size
+            fan_out = (filter_shape[0] * np.prod(filter_shape[2:]) /
+                        np.prod(pool_size))
+            # initialize weights with random weights
+            W_bound = np.sqrt(6. / (fan_in + fan_out))
+            #initialize the value of W
+            W_values = np.asarray(
                 rng.uniform(low=-W_bound, high=W_bound, size=filter_shape),
                 dtype=theano.config.floatX
-            ),
-            borrow=True
-        )
+            )
+            #create a shared variable
+            W = theano.shared(value=W_values, name='W', borrow=True)
 
-        # the bias is a 1D tensor -- one bias per output feature map
-        b_values = np.zeros((filter_shape[0],), dtype=theano.config.floatX)
-        self.b = theano.shared(value=b_values, borrow=True)
+        if b is None:
+            b_values = np.zeros((filter_shape[0],), dtype=theano.config.floatX)
+            b = theano.shared(value=b_values, name='b', borrow=True)
+
+        self.W = W
+        self.b = b
 
         # convolve input feature maps with filters
         conv_out = conv.conv2d(
@@ -346,26 +342,60 @@ class LeNetConvPoolLayer(object):
 ####################################################################################
 ####################################################################################
 ####################################################################################
+class DropoutLeNetConvPoolLayer(LeNetConvPoolLayer):
+    """Pool Layer of a convolutional network """
+    ####################################################################################
+    def __init__(self, rng, input, filter_shape, image_shape, pool_size, p_in, W=None, b=None):
+        super(DropoutLeNetConvPoolLayer,self).__init__(
+            rng=rng, input=input, filter_shape=filter_shape, image_shape=image_shape, 
+            pool_size=pool_size, W=W, b=b)
+        #apply dropout to the output of the hidden layer
+        self.output = _dropout_from_layer(rng,self.output,p=p_in)
+####################################################################################
+####################################################################################
+####################################################################################
 class CNN(object):
     """convolutional neural network """
     ####################################################################################
     def __init__(self, rng, input, n_kerns, filter_shape, pool_size,batch_size,
-                    n_in,n_hidden, n_out, activation):
+                    n_in,n_hidden, n_out, activation, p_dropout):
 
 
         self.layers=[]
+        self.dropout_layers=[]
         # Construct the first convolutional pooling layer:
         # filtering reduces the image size to (28-5+1 , 28-5+1) = (24, 24)
         # maxpooling reduces this further to (24/2, 24/2) = (12, 12)
         # 4D output tensor is thus of shape (batch_size, n_kerns[0], 12, 12)
-        layer0_input=input
 
+        #image inputs
+        layer0_input=input
+        #apply dropout to input images
+        p_in=p_dropout[0]
+        dropout_layer0_input=_dropout_from_layer(rng,layer0_input,p=p_in)
+
+        #apply dropout to the convolution layer (not to pooling/downsampling)
+        p_last=p_in
+        p_in=p_dropout[1]
+        dropout_layer0 = DropoutLeNetConvPoolLayer(
+            rng,
+            input=layer0_input,
+            image_shape=(batch_size, 1, n_in[0], n_in[1]),
+            filter_shape=(n_kerns[0], 1, filter_shape[0], filter_shape[1]),
+            pool_size=pool_size,
+            p_in=p_in
+        )
+        self.dropout_layers.append(dropout_layer0)
+
+        #use weights from dropout layer, but with dropout probability adjustment
         layer0 = LeNetConvPoolLayer(
             rng,
             input=layer0_input,
             image_shape=(batch_size, 1, n_in[0], n_in[1]),
             filter_shape=(n_kerns[0], 1, filter_shape[0], filter_shape[1]),
-            pool_size=pool_size
+            pool_size=pool_size,
+            W=dropout_layer0.W*p_last,
+            b=dropout_layer0.b
         )
 
         self.layers.append(layer0)
@@ -378,12 +408,29 @@ class CNN(object):
         n_w=(n_in[0]-filter_shape[0]+1)/pool_size[0]
         n_h=(n_in[1]-filter_shape[1]+1)/pool_size[1]
 
+        #construct second dropout convolution+pooling layer
+        p_last=p_in
+        p_in=p_dropout[2]
+        dropout_layer1 = DropoutLeNetConvPoolLayer(
+            rng,
+            input=dropout_layer0.output,
+            image_shape=(batch_size, n_kerns[0], n_w, n_h),
+            filter_shape=(n_kerns[1], n_kerns[0], filter_shape[0], filter_shape[1]),
+            pool_size=pool_size,
+            p_in=p_in
+        )
+
+        self.dropout_layers.append(dropout_layer1)
+
+        #use weights from dropout layer, but with dropout probability adjustment
         layer1 = LeNetConvPoolLayer(
             rng,
             input=layer0.output,
             image_shape=(batch_size, n_kerns[0], n_w, n_h),
             filter_shape=(n_kerns[1], n_kerns[0], filter_shape[0], filter_shape[1]),
-            pool_size=pool_size
+            pool_size=pool_size,
+            W=dropout_layer1.W*p_last,
+            b=dropout_layer1.b
         )
 
         self.layers.append(layer1)
@@ -400,41 +447,74 @@ class CNN(object):
 
         #setup the input to the first hidden layer
         next_layer_input=layer1.output.flatten(2)
+        next_dropout_layer_input=dropout_layer1.output.flatten(2)
         n_in=n_kerns[1] * n_w * n_h
         #loop over hidden layers
         for n_layer in range(len(n_hidden)):
+            #dropout probability
+            p_last=p_in
+            p_in=p_dropout[n_layer+3]
+            #first construct the hidden layer with dropout
+            next_dropout_layer=DropoutHiddenLayer(
+                rng, 
+                input=next_dropout_layer_input, 
+                n_in=n_in,
+                n_out=n_hidden[n_layer],
+                p_in=p_in,
+                activation=activation
+            )
+            self.dropout_layers.append(next_dropout_layer)
+            next_dropout_layer_input=next_dropout_layer.output
+
+            #hidden layer without dropout, and weights adjusted by dropout probability
             next_layer=HiddenLayer(
                 rng,
                 input=next_layer_input,
                 n_in=n_in,
                 n_out=n_hidden[n_layer],
+                W=next_dropout_layer.W*p_last,
+                b=next_dropout_layer.b,
                 activation=activation
             )
             self.layers.append(next_layer)
-            n_in=n_hidden[n_layer]
             next_layer_input=next_layer.output
+            #update input dimension
+            n_in=n_hidden[n_layer]
+
+
+        #dropout probability
+        p_in=p_last
+        # classify the values of the fully-connected sigmoidal layer
+        Dropout_logRegressionLayer = LogisticRegression(
+                input=next_dropout_layer_input, 
+                n_in=n_in, 
+                n_out=n_out,
+        )
+        self.dropout_layers.append(Dropout_logRegressionLayer)
 
         # classify the values of the fully-connected sigmoidal layer
         logRegressionLayer = LogisticRegression(
                 input=next_layer_input, 
                 n_in=n_in, 
-                n_out=n_out
+                n_out=n_out,
+                W=Dropout_logRegressionLayer.W*p_last,
+                b=Dropout_logRegressionLayer.b
         )
 
         self.layers.append(logRegressionLayer)
         # L1 norm ; one regularization option is to enforce L1 norm to
         # be small
-        self.L1 = np.array([abs(self.layers[i].W).sum() for i in range(len(n_hidden)+3)]).sum()
+        self.L1 = np.array([abs(self.dropout_layers[i].W).sum() for i in range(len(n_hidden)+3)]).sum()
 
         # square of L2 norm ; one regularization option is to enforce
         # square of L2 norm to be small
-        self.L2_sqr = np.array([(self.layers[i].W ** 2).sum() for i in range(len(n_hidden)+3)]).sum()
+        self.L2_sqr = np.array([(self.dropout_layers[i].W ** 2).sum() for i in range(len(n_hidden)+3)]).sum()
 
         # the parameters of the model are the parameters of the two layer it is
         # made out of
 
         #list of lists [[W,b],[W,b],...]
-        self.params = [self.layers[i].params for i in range(len(n_hidden)+3)]
+        self.params = [self.dropout_layers[i].params for i in range(len(n_hidden)+3)]
         #single flat list [W,b,W,b,...]
         self.params = [item for sublist in self.params for item in sublist]
         # self.params = sum(self.params,[])
@@ -447,20 +527,26 @@ class CNN(object):
             init = np.zeros(param.get_value(borrow=True).shape,dtype=theano.config.floatX)
             self.updates[param] = theano.shared(init)
 
-        #outputs
+        #outputs from dropout
+        self.dropout_p_y_given_x = self.dropout_layers[-1].p_y_given_x
+        #outputs from network with dropout probability weighted parameters
         self.p_y_given_x = self.layers[-1].p_y_given_x
 
         # compute prediction as class whose probability is maximal
+        # generate predictions for validation set, which uses the dropout probability weighted parameters
         self.y_out = T.argmax(self.p_y_given_x, axis=-1)
+
+        # loss function uses
         self.loss = lambda y: self.negative_log_likelihood(self.y)
 
-    ####################################################################################
-    def mse(self, y):
-        # error between output and target
-        return T.mean((self.y_out - y) ** 2)
+    # ####################################################################################
+    # def mse(self, y):
+    #     # error between output and target
+    #     return T.mean((self.y_out - y) ** 2)
 
     ####################################################################################
     def predict_y(self):
+        #predictions for validation and test set
         return self.y_out
 
     ####################################################################################
@@ -486,7 +572,9 @@ class CNN(object):
         # LP[n-1,y[n-1]]] and T.mean(LP[T.arange(y.shape[0]),y]) is
         # the mean (across minibatch examples) of the elements in v,
         # i.e., the mean log-likelihood across the minibatch.
-        return -T.mean(T.log(self.p_y_given_x)[T.arange(y.shape[0]), y])
+
+        # use dropout network as this is minimized in training 
+        return -T.mean(T.log(self.dropout_p_y_given_x)[T.arange(y.shape[0]), y])
         # end-snippet-2
 
     ####################################################################################
@@ -503,6 +591,8 @@ class CNN(object):
             raise TypeError('y should have the same shape as self.y_out',
                 ('y', y.type, 'y_out', self.y_out.type))
 
+        # errors is returned for dropout probability weighted network
+        # used for validation and test set
         return T.mean(T.neq(self.y_out, y))
 
 ####################################################################################
@@ -517,7 +607,7 @@ class TrainCNN(object):
                  n_hidden=np.array([50,50]), n_out=5, learning_rate=0.1, rate_adj=0.40,
                  n_epochs=100, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.40,
                  activation='tanh',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=400.0,batch_size=100):
+                 momentum_epochs=400.0,batch_size=100,p_dropout=[0.9,0.5,0.5,0.5]):
 
         #initialize the inputs (tunable parameters) and activations
         if rng is None:
@@ -549,6 +639,7 @@ class TrainCNN(object):
         self.final_momentum = float(final_momentum)
         self.momentum_epochs = int(momentum_epochs)
         self.batch_size=int(batch_size)
+        self.p_dropout=p_dropout
 
         #build the network
         self.ready()
@@ -574,7 +665,7 @@ class TrainCNN(object):
 
         self.CNN = CNN(rng=self.rng, input=self.x, n_kerns=self.n_kerns, filter_shape=self.filter_shape, 
                         pool_size=self.pool_size,batch_size=self.batch_size,n_in=self.n_in,
-                        n_hidden=self.n_hidden, n_out=self.n_out,activation=activation)
+                        n_hidden=self.n_hidden, n_out=self.n_out,activation=activation,p_dropout=self.p_dropout)
 
     ####################################################################################
     def _set_weights(self, weights):
@@ -741,7 +832,7 @@ class TrainCNN(object):
                 effective_momentum = self.initial_momentum + (self.final_momentum - self.initial_momentum)*epoch/self.momentum_epochs
                 example_cost = train_model(idx, self.learning_rate,effective_momentum)
 
-            if (epoch % validation_frequency) and (epoch>=patience_init-1) == 0:
+            if (epoch % validation_frequency == 0):
                 # compute loss on validation set
                 valid_losses = [compute_valid_error(i) for i in xrange(n_valid_batches)]
                 this_valid_loss = np.mean(valid_losses)
@@ -753,7 +844,9 @@ class TrainCNN(object):
                         this_valid_loss < best_valid_loss *
                         improvement_threshold
                     ):
-                        patience += 2*validation_frequency
+                        #only adjust patience if above the min number of epochs (patience_init)
+                        if epoch>=patience_init:
+                            patience += validation_frequency
                         #save parameters if best performance
                         save_file = open(path, 'wb')  # this will overwrite current contents
                         cPickle.dump(self.CNN.params, save_file, -1)  # the -1 is for HIGHEST_PROTOCOL and it triggers much more efficient storage than np's default
@@ -765,21 +858,21 @@ class TrainCNN(object):
                     self.learning_rate*=self.rate_adj
 
                 print(
-                    'epoch %i, validation error %f, best validation error %f, learning rate %f' %
+                    'epoch %i, validation error %f, best validation error %f, learning rate %f, patience %i' %
                     (
                         epoch,
                         this_valid_loss * 100.,
                         best_valid_loss *100,
-                        self.learning_rate
+                        self.learning_rate,
+                        patience
                     )
                 )
 
-            if epoch>patience:
+            if epoch>patience-1:
                 done_looping = True
                 break
 
             self.learning_rate *= self.learning_rate_decay
-
 
         # compute loss on training set
         train_losses = [compute_train_error(i) for i in xrange(n_train_batches)]
@@ -821,6 +914,8 @@ def test_CNN():
     filter_shape=[5,5]
     pool_size=(2,2)
     n_epochs=400
+    p_hidden=[0.7]*len(n_hidden)
+    p_dropout=[0.9,0.7,0.7]+p_hidden
 
     rng = np.random.RandomState(2479)
     np.random.seed(0)
@@ -829,7 +924,7 @@ def test_CNN():
                  n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=0.40,
                  n_epochs=n_epochs, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.99,
                  activation='sigmoid',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=100.0,batch_size=batch_size)
+                 momentum_epochs=100.0,batch_size=batch_size,p_dropout=p_dropout)
 
     path='params.zip'
     model.fit(path=path,validation_frequency=10)

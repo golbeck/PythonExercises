@@ -169,8 +169,7 @@ class LogisticRegression(object):
 ####################################################################################
 class HiddenLayer(object):
     ####################################################################################
-    def __init__(self, rng, input, n_in, n_out, W=None, b=None,W_update=None,b_update=None,
-                 activation=T.tanh):
+    def __init__(self, rng, input, n_in, n_out, W=None, b=None,activation=T.tanh):
         """
         Typical hidden layer of a MLP: units are fully-connected and have
         sigmoidal activation function. Weight matrix W is of shape (n_in,n_out)
@@ -712,7 +711,7 @@ class TrainCNN(object):
         epoch = 0
 
         tol=0.005
-        improvement_threshold=0.9
+        improvement_threshold=0.99
         patience_init=20
         patience=patience_init
         # compute number of minibatches for training, validation and testing
@@ -805,8 +804,8 @@ def test_CNN():
     learning_rate=0.1
     L1_reg=0.001
     L2_reg=0.0
-    n_kerns=[50,80]
-    n_hidden = np.array([1500,800,300])
+    n_kerns=[10,15]
+    n_hidden = np.array([50,50,50])
     n_in = np.array([28,28])
     n_out = 10
     batch_size=50
@@ -842,8 +841,8 @@ def test_CNN():
 ####################################################################################
 if __name__ == "__main__":
     pwd_temp=os.getcwd()
-    # dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
-    dir1='/home/golbeck/Workspace/Kaggle_MNIST'
+    dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
+    # dir1='/home/golbeck/Workspace/Kaggle_MNIST'
     dir1=dir1+'/data' 
     if pwd_temp!=dir1:
         os.chdir(dir1)

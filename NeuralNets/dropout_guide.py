@@ -4,7 +4,7 @@ import gzip
 import os
 import sys
 import time
-from collections import OrderedDict
+# from collections import OrderedDict
 
 import theano
 import theano.tensor as T
@@ -12,8 +12,8 @@ from theano.ifelse import ifelse
 import theano.printing
 import theano.tensor.shared_randomstreams
 
-from logistic_sgd import LogisticRegression
-from load_data import load_umontreal_data, load_mnist
+# from logistic_sgd import LogisticRegression
+# from load_data import load_umontreal_data, load_mnist
 
 
 ##################################
@@ -31,6 +31,9 @@ def Sigmoid(x):
 def Tanh(x):
     y = T.tanh(x)
     return(y)
+####################################################################################
+####################################################################################
+####################################################################################
     
 class HiddenLayer(object):
     def __init__(self, rng, input, n_in, n_out,
@@ -66,6 +69,9 @@ class HiddenLayer(object):
             self.params = [self.W]
 
 
+####################################################################################
+####################################################################################
+####################################################################################
 def _dropout_from_layer(rng, layer, p):
     """p is the probablity of dropping a unit
     """
@@ -78,6 +84,9 @@ def _dropout_from_layer(rng, layer, p):
     output = layer * T.cast(mask, theano.config.floatX)
     return output
 
+####################################################################################
+####################################################################################
+####################################################################################
 class DropoutHiddenLayer(HiddenLayer):
     def __init__(self, rng, input, n_in, n_out,
                  activation, dropout_rate, use_bias, W=None, b=None):
@@ -88,6 +97,9 @@ class DropoutHiddenLayer(HiddenLayer):
         self.output = _dropout_from_layer(rng, self.output, p=dropout_rate)
 
 
+####################################################################################
+####################################################################################
+####################################################################################
 class MLP(object):
     """A multilayer perceptron with all the trappings required to do dropout
     training.
@@ -163,6 +175,9 @@ class MLP(object):
         self.params = [ param for layer in self.dropout_layers for param in layer.params ]
 
 
+####################################################################################
+####################################################################################
+####################################################################################
 def test_mlp(
         initial_learning_rate,
         learning_rate_decay,
@@ -368,6 +383,9 @@ def test_mlp(
                           ' ran for %.2fm' % ((end_time - start_time) / 60.))
 
 
+####################################################################################
+####################################################################################
+####################################################################################
 if __name__ == '__main__':
     import sys
     
