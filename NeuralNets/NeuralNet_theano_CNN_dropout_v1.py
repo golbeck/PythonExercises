@@ -779,7 +779,7 @@ class TrainCNN(object):
             #update from last iteration
             weight_update = self.CNN.updates[param]
             #current update with momentum
-            upd = mom * weight_update - l_r * gparam
+            upd = mom * weight_update - (1.0 - mom) *l_r * gparam
             #update the weight parameters and their grad descent updates
             updates.append((self.CNN.updates[param],upd))
             updates.append((param,param + upd))
@@ -816,7 +816,7 @@ class TrainCNN(object):
         epoch = 0
 
         tol=0.005
-        improvement_threshold=0.9
+        improvement_threshold=1.0
         patience_init=20
         patience=patience_init
         # compute number of minibatches for training, validation and testing
@@ -827,7 +827,7 @@ class TrainCNN(object):
         done_looping = False
 
         while (epoch < self.n_epochs) and (not done_looping):
-            epoch = epoch + 1
+            epoch += 1
             for idx in xrange(n_train_batches):
                 effective_momentum = self.initial_momentum + (self.final_momentum - self.initial_momentum)*epoch/self.momentum_epochs
                 example_cost = train_model(idx, self.learning_rate,effective_momentum)
@@ -905,26 +905,35 @@ class TrainCNN(object):
 ####################################################################################
 def test_CNN():
     """ Test CNN. """
+    
     learning_rate=0.1
-    n_kerns=[5,8]
-    n_hidden = np.array([10,10,10])
+    L1_reg=0.0
+    L2_reg=0.0
+    n_kerns=[50,80]
+    n_hidden = np.array([1500,800,300])
     n_in = np.array([28,28])
     n_out = 10
-    batch_size=50
+    batch_size=100
     filter_shape=[5,5]
     pool_size=(2,2)
-    n_epochs=400
-    p_hidden=[0.7]*len(n_hidden)
-    p_dropout=[0.9,0.7,0.7]+p_hidden
+    n_epochs=100
+    rate_adj=0.6
+    learning_rate_decay=0.99
+    final_momentum=0.99
+    initial_momentum=0.5
+    momentum_epochs=100.0
+
+    p_hidden=[0.5]*len(n_hidden)
+    p_dropout=[0.9,0.8,0.8]+p_hidden
 
     rng = np.random.RandomState(2479)
     np.random.seed(0)
 
     model = TrainCNN(n_kerns=n_kerns,filter_shape=filter_shape,pool_size=pool_size,n_in=n_in, rng=rng, 
-                 n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=0.40,
-                 n_epochs=n_epochs, L1_reg=0.00, L2_reg=0.00, learning_rate_decay=0.99,
-                 activation='sigmoid',final_momentum=0.99, initial_momentum=0.5,
-                 momentum_epochs=100.0,batch_size=batch_size,p_dropout=p_dropout)
+                 n_hidden=n_hidden, n_out=n_out, learning_rate=learning_rate, rate_adj=rate_adj,
+                 n_epochs=n_epochs, L1_reg=L1_reg, L2_reg=L2_reg, learning_rate_decay=learning_rate_decay,
+                 activation='sigmoid',final_momentum=final_momentum, initial_momentum=initial_momentum,
+                 momentum_epochs=momentum_epochs,batch_size=batch_size,p_dropout=p_dropout)
 
     path='params.zip'
     model.fit(path=path,validation_frequency=10)
@@ -944,8 +953,8 @@ def test_CNN():
 ####################################################################################
 if __name__ == "__main__":
     pwd_temp=os.getcwd()
-    dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
-    # dir1='/home/golbeck/Workspace/Kaggle_MNIST'
+    # dir1='/home/sgolbeck/workspace/Kaggle_MNIST'
+    dir1='/home/golbeck/Workspace/Kaggle_MNIST'
     dir1=dir1+'/data' 
     if pwd_temp!=dir1:
         os.chdir(dir1)
